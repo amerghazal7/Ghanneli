@@ -7,10 +7,17 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
   },
+  "dependencies": {
+    "next": "^15",
+    "react": "^19",
+    "react-dom": "^19"
+  },
   "devDependencies": {
     "vitest": "^2",
     "typescript": "^5",
     "eslint": "^9",
-    "@types/node": "^20"
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
   }
 }

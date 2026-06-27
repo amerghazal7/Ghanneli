@@ -7,26 +7,15 @@ import { postGenerate } from './httpEngine'
 export class AceStepCloudProd implements MusicGenerationService {
   private readonly baseUrl: string
   private readonly apiToken: string
-  private readonly enginePath: string
 
-  constructor(config: { baseUrl: string; apiToken: string; enginePath?: string }) {
+  constructor(config: { baseUrl: string; apiToken: string }) {
     this.baseUrl = config.baseUrl
     this.apiToken = config.apiToken
-    this.enginePath = config.enginePath ?? '/generate'
   }
 
   generate(req: MusicRequest): Promise<MusicResult> {
-    // enginePath is already the full path; baseUrl + /generate is handled by postGenerate,
-    // but we honour enginePath by swapping baseUrl to include the custom path prefix when set.
-    // postGenerate always appends /generate, so we derive an effective baseUrl that makes
-    // `${effectiveBase}/generate` resolve correctly.
-    const effectiveBase =
-      this.enginePath === '/generate'
-        ? this.baseUrl
-        : this.baseUrl + this.enginePath.replace(/\/generate$/, '')
-
     return postGenerate({
-      baseUrl: effectiveBase,
+      baseUrl: this.baseUrl,
       headers: { Authorization: `Bearer ${this.apiToken}` },
       req,
     })

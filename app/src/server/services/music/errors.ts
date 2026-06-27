@@ -3,9 +3,8 @@ export class EngineError extends Error {
   readonly cause?: unknown
 
   constructor(message: string, opts?: { status?: number; cause?: unknown }) {
-    super(message)
+    super(message, { cause: opts?.cause })
     this.name = 'EngineError'
     this.status = opts?.status
-    this.cause = opts?.cause
   }
 }

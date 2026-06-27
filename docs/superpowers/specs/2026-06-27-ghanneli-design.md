@@ -39,10 +39,11 @@ Phase-2 activity rather than an upfront gamble.
 | D9 | **`LyricsService` built on the Vercel AI SDK** | Provider-agnostic LLM layer + schema-validated structured output for free |
 | D10 | **Analytics warehouse + dashboards from day one** | Drive engine-development and client-behavior decisions with data |
 | D11 | **Voice Cloning as a premium Phase-4 feature — architecture pre-seamed in the MVP** | Huge differentiation/premium revenue; built later, but the MVP leaves the optional pipeline stage + `voiceProfileId` seam so no re-architecture is needed |
-| D12 | **MVP ships BOTH engines as first-class, switchable options: cloud serverless GPU AND self-hosted AIBackend (4× L40S, *possible* access)** | Lets the founder benchmark cost/quality/latency of both; no lock-in to either |
-| D13 | **Two-part architecture: App (GCP) + AIBackend (self-hostable), one inference-API boundary; monorepo** | Clean separation of business logic vs model dev/serving; either engine plugs into the same boundary |
-| D14 | **Engine selection is configuration — router modes: cloud-only / self-host-only / A-B compare / primary+fallback** | Cloud is the always-available baseline (no hardware dependency); self-host is optional and toggled in when available |
-| D15 | **Self-hosting also unlocks (near-free) fine-tuning when the L40S server is available** | Owned hardware makes Phase-2 fine-tuning compute ≈ free, but it is not required for the MVP |
+| D12 | **L40S server's primary role = model LAB & STAGING** (fine-tune + validate candidate versions); **cloud serverless GPU = PRODUCTION serving** | Owned hardware makes training/staging ≈ free; cloud gives scalable, always-available production |
+| D13 | **Two-part architecture: App (GCP) + AIBackend (self-hostable lab), one inference-API boundary; monorepo** | Clean separation of business logic vs model dev; both serving targets honor the same boundary |
+| D14 | **Model release pipeline: fine-tune (L40S) → validate / A-B vs prod (L40S) → promote checkpoint to cloud → release new version → rollback if needed** | Disciplined MLOps; ship only validated models; instant rollback |
+| D15 | **Cloud serving must host OUR fine-tuned checkpoints** (Cog/private Replicate model or container on Modal/RunPod), driven by a model registry | Production runs released custom versions, not just stock ACE-Step |
+| D16 | **Engine selection is config (router modes: cloud-prod / self-host-staging / A-B compare / fallback)** | A-B = candidate-vs-prod validation gate; both adapters wired so either can serve when needed |
 
 ---
 
@@ -150,13 +151,16 @@ MusicGenerationService.generate(MusicRequest) -> MusicResult
                    // voiceProfileId is the Phase-4 voice-cloning seam (optional/no-op in MVP)
   MusicResult:   { takes[]:{audioUri,durationSec,score?}, engineId, engineVersion, meta }
 
-Adapters (BOTH wired in the MVP — selection is config, see §7A/§7B):
-  - AceStepFal / AceStepReplicate   (CLOUD — external serverless GPU; always-available baseline)
-  - AceStepSelfHosted               (SELF-HOST — 4x L40S AIBackend server, when available; §7B)
-  - AceStepFineTuned                (Phase 2 — served from AIBackend)
-  - Jamify / HeartMuse              (experimental)
+Adapters (selection is config; see §7A/§7B):
+  - AceStepCloudProd      (PRODUCTION — serves the released version on cloud GPU;
+                           hosts OUR fine-tuned checkpoints via Cog/Replicate or
+                           container on Modal/RunPod. Stock ACE-Step in Phase 1.)
+  - AceStepSelfHostStaging(LAB/STAGING — 4x L40S AIBackend; serves candidate versions
+                           for validation/internal A-B before promotion; §7B)
+  - Jamify / HeartMuse    (experimental)
 
-Router modes (config): cloud-only | self-host-only | a-b-compare | primary+fallback
+Router modes (config): cloud-prod | self-host-staging | a-b-compare (candidate vs prod)
+                        | fallback (cloud<->self-host if one is down)
 
 Design rules:
   - Normalized request/response contract (app is engine-blind)
@@ -212,9 +216,9 @@ variable cost is **GPU-per-song**.
 |-------|--------|-----------|
 | Web + API | **Next.js (container) on Cloud Run**, scale-to-zero | $0 idle; pay per request |
 | Async jobs | **Cloud Tasks → Cloud Run worker** | ~Free at MVP volume |
-| Music GPU — option A (baseline) | **External serverless GPU (fal.ai / Replicate)** via `AceStepFal/Replicate` | Always available, no hardware dependency; per-second billing |
-| Music GPU — option B (when available) | **Self-hosted ACE-Step on the 4× L40S AIBackend** (§7B) via `AceStepSelfHosted` | Marginal cost ≈ electricity; also the fine-tuning environment |
-| Selection | **Config-driven router** (cloud-only / self-host-only / A-B / primary+fallback) | Try and compare both; switch without code changes |
+| Music GPU — **production** | **Cloud serverless GPU (Replicate Cog / Modal / RunPod)** serving the released version | Scalable, always-on; hosts our custom fine-tuned checkpoints (stock ACE-Step in Phase 1) |
+| Music GPU — **lab/staging** | **Self-hosted 4× L40S AIBackend** (§7B) | Fine-tuning + candidate validation/A-B; compute ≈ electricity |
+| Selection | **Config-driven router** (cloud-prod / self-host-staging / A-B / fallback) | Switch/compare without code changes |
 | Lyrics LLM | **Claude (Vertex or direct)** default, **Gemini Flash** fallback — via Vercel AI SDK | Token cost negligible; route to cheapest model holding quality |
 | DB | **Neon serverless Postgres** (scale-to-zero, free tier) → AlloyDB/Cloud SQL at scale | Avoids Cloud SQL always-on minimum at MVP |
 | Auth | **Firebase Auth / Identity Platform** | Free tier |
@@ -240,35 +244,49 @@ payments, analytics, and the service *interfaces* (`LyricsService`,
 `MusicGenerationService`, `VoiceConversionService`). Deployed on GCP via Terraform.
 Knows nothing about how models run.
 
-**Part 2 — AIBackend (model dev & serving).** Self-hostable on the 4× L40S server. Serves
-inference behind an HTTP API and is also where models are fine-tuned, evaluated,
-versioned, and promoted. The App's `MusicGenerationService` (and later
-`VoiceConversionService`) adapters call this API.
+**Part 2 — AIBackend (model LAB on 4× L40S).** The environment where models are
+**fine-tuned, evaluated, versioned, validated, and promoted**. It serves *candidate*
+versions behind the same inference API for internal validation / A-B vs production. Once
+a candidate passes, its checkpoint is **promoted/shipped to cloud** and released as the
+new production version.
 
 - **Repo:** monorepo, single GitHub repo, top-level `/app` and `/ai-backend`.
 - **Boundary contract:** the inference API uses the same `MusicRequest`/`MusicResult`
-  shapes — identical to the cloud adapters — so the App is engine-blind and either path
-  is a config switch.
-- **Both paths in the MVP:** the cloud serverless adapter is the always-available
-  baseline; the AIBackend ships with **setup guides + serving code** (§7B) so the founder
-  can stand it up and benchmark it against cloud. Neither is mandatory; the router picks.
+  shapes for both production (cloud) and staging (L40S) — so the App is engine-blind and
+  routing is a config switch.
+- **Production vs lab roles:** **cloud** serves released versions to users (always-on,
+  scalable, hosts our custom checkpoints); the **L40S AIBackend** trains and stages
+  candidates. The AIBackend ships as **guides + code** so the founder can stand up the
+  train/serve/validate stack.
 
-## 7B. AIBackend module — self-hostable serving & fine-tuning (4× L40S)
+## 7B. AIBackend module — model lab on 4× L40S (fine-tune · validate · promote)
 
-**This module is shipped in the MVP as guides + code so you can try the self-host path,
-but it is optional** — the cloud adapter works without it. When the L40S server is
-available, this is how you run and benchmark it (and, in Phase 2, fine-tune).
+**Role:** the L40S server is the **model lab and staging environment** — where customized
+models are fine-tuned, evaluated, and validated before being **shipped to cloud** as a new
+production version. It is **not** the production serving path (cloud is). Shipped in the
+MVP as **guides + code** so you can stand up the train/serve/validate stack.
 
-**Hardware:** 4× NVIDIA L40S (48 GB each, 192 GB total) — enough to self-host ACE-Step
-inference **and** run LoRA/full fine-tunes. When used, marginal GPU cost drops to
-~electricity and fine-tuning compute becomes essentially free.
+**Hardware:** 4× NVIDIA L40S (48 GB each, 192 GB total) — enough to run LoRA/full
+fine-tunes **and** serve candidate versions for validation. Training/staging compute ≈
+electricity (essentially free).
 
-### Serving
+**Model release pipeline (the core workflow):**
+```
+fine-tune (L40S) → eval harness + internal A-B vs current prod (L40S, served as candidate)
+   → candidate passes quality gate → package checkpoint → PROMOTE to cloud
+   → release as production version N (App router points prod traffic at N)
+   → rollback to N-1 by config if regressions appear
+```
+
+### Serving (candidate/staging on the L40S)
 - ACE-Step wrapped in a **FastAPI inference server**; one model worker pinned per GPU
-  (GPU affinity) behind an internal queue → 4-way parallelism.
-- Implements the `AceStepSelfHosted` adapter contract (same `MusicRequest`/`MusicResult`).
+  (GPU affinity) behind an internal queue → 4-way parallelism (training jobs time-share
+  the remaining GPUs).
+- Implements the `AceStepSelfHostStaging` adapter contract (same `MusicRequest`/`MusicResult`)
+  so candidates are validated through the identical pipeline production uses.
 - Models kept **warm in VRAM** (no cold start); health checks; batching where possible.
-- Container: **Docker + NVIDIA Container Toolkit**, pinned CUDA/driver versions.
+- Container: **Docker + NVIDIA Container Toolkit**, pinned CUDA/driver versions —
+  the same image is the basis for the cloud production container (parity).
 
 ### Connectivity (App on GCP ↔ server)
 - **Cloudflare Tunnel (`cloudflared`)** exposes the inference API with TLS + a service
@@ -290,8 +308,10 @@ inference **and** run LoRA/full fine-tunes. When used, marginal GPU cost drops t
 - **Eval harness:** automatic + human-rated A/B vs the current served model
   (intelligibility, dialect accuracy, musicality), comparing `engineVersion`s on identical
   prompts via the abstraction.
-- **Model registry & promotion:** versioned checkpoints; promote a new `engineVersion` to
-  serving via config; instant rollback. Per-song provenance already tracked.
+- **Model registry & promotion:** versioned checkpoints with eval scores + provenance;
+  **promotion packages a validated checkpoint and deploys it to the cloud production
+  target** (Cog/Replicate or Modal/RunPod container), releasing version N; instant
+  rollback to N-1 by config. Per-song provenance already tracked.
 
 ### Server infra-as-code
 - **Ansible** provisions the box (drivers, CUDA, Docker, `cloudflared`, serving stack) —
@@ -342,20 +362,19 @@ Web app + worker ──emit typed events──▶ Pub/Sub ──BigQuery subscri
 
 ## 9. Phased roadmap
 
-**Phase 1 — MVP self-serve (~6–10 weeks).** Two parts: **App** (wizard → LyricsService
-via Vercel AI SDK → MusicGenerationService → preview → Stripe credits → share page; all
-dialects as prompt-based presets; analytics from day one; Terraform-provisioned). The
-MVP wires **both music engines** behind the router: the **cloud serverless adapter**
-(always-available baseline) **and** the **AIBackend self-host path** (ACE-Step on the
-4× L40S via FastAPI + Cloudflare Tunnel, Ansible-provisioned — shipped as guides + code).
-Goal includes **benchmarking cloud vs self-host** on cost/quality/latency via the
-analytics dashboards.
+**Phase 1 — MVP self-serve (~6–10 weeks).** **App** (wizard → LyricsService via Vercel AI
+SDK → MusicGenerationService → preview → Stripe credits → share page; all dialects as
+prompt-based presets; analytics from day one; Terraform-provisioned). **Production serving
+= stock ACE-Step on cloud GPU** via `AceStepCloudProd`. The **AIBackend lab** (4× L40S,
+FastAPI + Cloudflare Tunnel, Ansible) is stood up as guides + code so the train/serve/
+validate stack is ready — but the MVP has no fine-tuned model yet, so production runs the
+stock model.
 
-**Phase 2 — Quality & targeted fine-tuning (after traction).** On the L40S AIBackend
-(compute ≈ free): using the engine heatmap, build a curated, lyric-aligned dataset only
-for the popular-but-weak dialect×genre cells; run **LoRA fine-tunes**; eval-harness A/B
-vs the served model via the abstraction; promote `AceStepFineTuned` by config with instant
-rollback.
+**Phase 2 — Quality & targeted fine-tuning (after traction).** The release loop goes live:
+on the L40S lab (compute ≈ free), using the engine heatmap, build a curated lyric-aligned
+dataset for the popular-but-weak dialect×genre cells; run **LoRA fine-tunes**; validate via
+the eval harness + internal A-B vs current prod; **promote the validated checkpoint to
+cloud** and release it as the new production version, with instant rollback.
 
 **Phase 3 — Scale.** Migrate to self-hosted spot GPUs on GKE when volume beats per-call
 pricing; more dialects/genres; mobile; B2B (wedding planners, event companies, brands).
@@ -369,16 +388,15 @@ The MVP is pre-seamed for this (§4, §6.3), so no re-architecture is required.
 
 ## 10. Unit economics
 
-- **Cost per song — two paths to compare in the MVP:**
-  - *Cloud (baseline):* external GPU ~$0.05–0.30 + lyrics LLM (~$0.01–0.05) + storage.
-  - *Self-host (when available):* GPU ≈ **electricity only** (cents) + lyrics LLM + storage.
-  Benchmarking both is an explicit MVP goal (the analytics dashboards record cost/song per engine).
-- **Fine-tuning compute:** ~free **when the L40S server is available** — so Phase-2
-  fine-tuning isn't gated by GPU budget in that case.
+- **Production cost per song (cloud serving):** GPU ~$0.05–0.30 + lyrics LLM (~$0.01–0.05)
+  + storage. The analytics dashboards record cost/song per engine version.
+- **Training & staging compute:** ~free on the L40S lab — so fine-tuning and candidate
+  validation aren't gated by GPU budget. The server's value is **cheaper/faster model
+  development**, not lower per-song production cost.
 - **Price per song:** credit packs at **~$3–8/song-equivalent** *(tunable assumption,
   pending market validation)*.
-- → **Gross margin ~90%+ (cloud) to ~95%+ (self-host) per song.** Viability hinges on
-  cheap buyer acquisition — monitored continuously via the analytics CAC dashboards.
+- → **Gross margin ~90%+ per song** (cloud production serving). Viability hinges on cheap
+  buyer acquisition — monitored continuously via the analytics CAC dashboards.
 - **Voice-cloning premium tier (Phase 4):** likely a one-time **profile-setup fee** +
   a **higher per-song credit cost**. Added GPU cost per song (stem-separation + SVC) is
   still small relative to the premium price; expected to be the highest-margin product.
@@ -425,7 +443,8 @@ mix · gift-share/referral rate · CAC by channel · LTV.
 | Model/provider lock-in | Low | Vercel AI SDK + `MusicGenerationService` abstraction |
 | Voice-clone abuse (cloning third parties) *(Phase 4)* | High | Live randomized-phrase capture/liveness, explicit consent, prohibited-use terms, takedown + ban |
 | Biometric data handling *(Phase 4)* | High | Encryption at rest, retention limits, hard-delete, GDPR/PDPL alignment |
-| Single self-hosted server (no SLA, borrowed) | Medium | Cloud adapter is the always-available baseline; use primary+fallback mode + durable queue + heartbeat routing if relying on the box |
+| L40S lab downtime (no SLA, borrowed) | Low | It is lab/staging only — **production runs on cloud**, so downtime stalls model dev velocity, not user-facing serving |
+| Checkpoint promotion ships a regression to prod | Medium | Eval-harness quality gate + A-B vs prod before promote; versioned releases; instant rollback to N-1 |
 | Self-hosted endpoint security exposure | Medium | Cloudflare Tunnel (no open ports) + service-token/mTLS + egress allowlist |
 | PII/biometric data on a personal server | Medium | Send only inference-needed data, no persistence on box, TLS, revisit hosting for Phase 4 |
 

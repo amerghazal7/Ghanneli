@@ -13,3 +13,4 @@ test = ["pytest", "httpx"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["gpu: requires a CUDA GPU (skipped without one)"]

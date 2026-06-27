@@ -1,0 +1,51 @@
+# Node / App
+node_modules/
+.next/
+out/
+dist/
+build/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python / AIBackend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.ipynb_checkpoints/
+
+# ML artifacts (do NOT commit weights/datasets)
+*.ckpt
+*.safetensors
+*.pt
+*.bin
+checkpoints/
+datasets/
+wandb/
+mlruns/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# Secrets / credentials
+*.pem
+*.key
+secrets/
+service-account*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

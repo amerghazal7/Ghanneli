@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Make python3.11 the default python / pip
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
+    && python3.11 -m ensurepip --upgrade \
     && python -m pip install --upgrade pip
 
 WORKDIR /app
@@ -41,8 +42,8 @@ RUN pip install --no-cache-dir -e .
 # Install PyTorch with CUDA 12.4 support
 # Pin to a tested version; bump when upgrading the L40S driver stack.
 RUN pip install --no-cache-dir \
-    torch==2.3.1+cu124 \
-    torchaudio==2.3.1+cu124 \
+    torch==2.4.1+cu124 \
+    torchaudio==2.4.1+cu124 \
     --extra-index-url https://download.pytorch.org/whl/cu124
 
 # Install ACE-Step

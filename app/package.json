@@ -10,14 +10,15 @@
   "dependencies": {
     "next": "^15",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "zod": "^3"
   },
   "devDependencies": {
-    "vitest": "^2",
-    "typescript": "^5",
-    "eslint": "^9",
     "@types/node": "^20",
     "@types/react": "^19",
-    "@types/react-dom": "^19"
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "typescript": "^5",
+    "vitest": "^2"
   }
 }

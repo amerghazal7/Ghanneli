@@ -43,7 +43,7 @@ services:
       retries: 10
 
   neon-proxy:
-    image: ghcr.io/timowilhelm/local-neon-http-proxy:latest
+    image: ghcr.io/timowilhelm/local-neon-http-proxy:main
     environment:
       PG_CONNECTION_STRING: postgres://ghanneli:ghanneli@postgres:5432/ghanneli
     ports:

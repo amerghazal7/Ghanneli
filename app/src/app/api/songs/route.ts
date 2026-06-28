@@ -4,7 +4,7 @@ import { requireUser } from '../../../server/auth/middleware'
 import { Unauthorized } from '../../../server/auth/verify'
 import { getDb, type Db } from '../../../server/db/client'
 import { songs } from '../../../server/db/schema'
-import { enqueueGeneration } from '../../../server/jobs/enqueue'
+import { createQueue } from '../../../server/jobs/queue/factory'
 import type { AnalyticsEvent } from '../../../server/services/analytics/events'
 import { emitDefault } from '../../../server/services/analytics/wiring'
 
@@ -78,10 +78,11 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Bad Request', issues: parsed.error.issues }, { status: 400 })
   }
 
+  const queue = createQueue()
   const result = await createSong(parsed.data, {
     db: getDb(),
     userId,
-    enqueue: enqueueGeneration,
+    enqueue: (songId) => queue.enqueue('generate', { songId }),
     emitEvent: emitDefault,
   })
 

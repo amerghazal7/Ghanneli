@@ -4,6 +4,7 @@ import { type Db, getDb } from '../../db/client'
 import { credit } from '../credits/ledger'
 import { getPack } from './packs'
 import { emitDefault } from '../analytics/wiring'
+import type { AnalyticsEvent } from '../analytics/events'
 
 // ---------------------------------------------------------------------------
 // Minimal shape we need from a Stripe event (real or test-fabricated).
@@ -42,6 +43,7 @@ export type StripeEventLike = CheckoutSessionCompletedEvent | OtherEvent
 export async function handleStripeEvent(
   event: StripeEventLike,
   db: Db = getDb(),
+  emitEvent: (e: AnalyticsEvent) => Promise<void> = emitDefault,
 ): Promise<void> {
   // Filter: only act on completed checkout sessions
   if (event.type !== 'checkout.session.completed') {
@@ -91,7 +93,9 @@ export async function handleStripeEvent(
   // Mark order paid — idempotent (set is safe to re-apply)
   await db.update(orders).set({ status: 'paid' }).where(eq(orders.id, orderId))
 
-  // Emit purchase_completed (songId omitted — not on the order)
-  // Swallowed by emitDefault; a publish failure must not turn a successful credit into a 500.
-  await emitDefault({ type: 'purchase_completed', amountMinor: order.amountMinor, currency: order.currency })
+  // Emit purchase_completed (songId omitted — not on the order).
+  // emitEvent is injectable (tests pass a fake so they never construct a real
+  // Pub/Sub client); the default emitDefault swallows publish failures so a
+  // publish error can never turn a successful credit into a 500.
+  await emitEvent({ type: 'purchase_completed', amountMinor: order.amountMinor, currency: order.currency })
 }

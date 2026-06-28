@@ -11,8 +11,22 @@ import { POST as webhookPOST } from '../../src/app/api/webhooks/stripe/route'
 import { getBalance } from '../../src/server/services/credits/ledger'
 import { PACKS } from '../../src/server/services/payments/packs'
 import type { Order } from '../../src/server/db/schema'
+import type { AnalyticsEvent } from '../../src/server/services/analytics/events'
 
 type TestDb = ReturnType<typeof drizzle<typeof schema>>
+
+/**
+ * Fake analytics emitter — tests inject this so handleStripeEvent never
+ * constructs a real Pub/Sub client (which hangs/times out in CI with no GCP
+ * creds). Records emitted events for assertions.
+ */
+function fakeEmitter() {
+  const events: AnalyticsEvent[] = []
+  const emit = async (e: AnalyticsEvent): Promise<void> => {
+    events.push(e)
+  }
+  return { emit, events }
+}
 
 async function testDb(): Promise<TestDb> {
   const client = new PGlite()
@@ -80,11 +94,21 @@ describe('handleStripeEvent', () => {
   })
 
   it('credits once on completed event; replay is a no-op; order status becomes paid', async () => {
-    await handleStripeEvent(completedEvent(order.id, userId), db as unknown as Db)
-    await handleStripeEvent(completedEvent(order.id, userId), db as unknown as Db) // replay
+    const { emit, events } = fakeEmitter()
+    await handleStripeEvent(completedEvent(order.id, userId), db as unknown as Db, emit)
+    await handleStripeEvent(completedEvent(order.id, userId), db as unknown as Db, emit) // replay
 
     expect(await getBalance(userId, db as unknown as Db)).toBe(pack.credits)
     expect((await getOrder(order.id, db)).status).toBe('paid')
+
+    // purchase_completed emitted with the order's real amount/currency (integer minor units)
+    const purchases = events.filter((e) => e.type === 'purchase_completed')
+    expect(purchases).toHaveLength(2)
+    expect(purchases[0]).toMatchObject({
+      type: 'purchase_completed',
+      amountMinor: pack.amountMinor,
+      currency: pack.currency,
+    })
   })
 
   it('non-completed event type → no credit, order stays pending', async () => {

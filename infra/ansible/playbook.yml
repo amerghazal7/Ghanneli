@@ -1,0 +1,20 @@
+---
+# Provision the L40S "model lab/staging" box: GPU stack + the AIBackend
+# serving container exposed via a Cloudflare Tunnel. Re-runnable (idempotent).
+#
+# Usage (from a Linux control node):
+#   ansible-playbook -i infra/ansible/inventory.ini infra/ansible/playbook.yml
+# Syntax check:
+#   ansible-playbook --syntax-check infra/ansible/playbook.yml
+- name: Provision Ghanneli L40S AIBackend host
+  hosts: l40s
+  become: true
+  vars:
+    aibackend_image: ghanneli-aibackend:latest
+    aibackend_port: 8000
+    # Set these via inventory / --extra-vars / Ansible Vault; never commit real values.
+    aibackend_token: "{{ vault_aibackend_token | default('') }}"
+    cloudflared_tunnel_token: "{{ vault_cloudflared_tunnel_token | default('') }}"
+  roles:
+    - gpu
+    - serving

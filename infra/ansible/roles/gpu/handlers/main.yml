@@ -1,0 +1,10 @@
+---
+- name: restart docker
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+
+- name: reboot if driver changed
+  ansible.builtin.reboot:
+    msg: Rebooting to load the NVIDIA driver
+    reboot_timeout: 600

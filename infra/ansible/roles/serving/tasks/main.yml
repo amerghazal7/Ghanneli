@@ -1,0 +1,47 @@
+---
+# Build and run the AIBackend serving container on the L40S, and expose it
+# through a named Cloudflare Tunnel (cloudflared as a systemd service).
+# Uses ansible-core builtins only (no extra collections) so --syntax-check
+# passes on a bare control node. For richer idempotency, community.docker's
+# docker_image / docker_container modules are the production-grade choice.
+
+- name: Sync AIBackend source to the host
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../ai-backend/"
+    dest: /opt/ghanneli/ai-backend/
+    mode: "0755"
+
+- name: Build the AIBackend image
+  ansible.builtin.command:
+    cmd: docker build -t {{ aibackend_image }} /opt/ghanneli/ai-backend
+  register: docker_build
+  changed_when: "'Using cache' not in docker_build.stdout"
+
+- name: Run the AIBackend container (GPU, all visible devices)
+  ansible.builtin.shell: |
+    docker rm -f ghanneli-aibackend 2>/dev/null || true
+    docker run -d --name ghanneli-aibackend \
+      --restart unless-stopped \
+      --gpus all \
+      -p {{ aibackend_port }}:8000 \
+      -e AIBACKEND_TOKEN={{ aibackend_token }} \
+      {{ aibackend_image }}
+  register: docker_run
+  changed_when: docker_run.rc == 0
+
+- name: Install cloudflared
+  ansible.builtin.apt:
+    deb: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+  register: cloudflared_install
+  failed_when: cloudflared_install is failed and 'already installed' not in (cloudflared_install.msg | default(''))
+
+- name: Install cloudflared tunnel as a systemd service (token-based, no inbound ports)
+  ansible.builtin.command:
+    cmd: cloudflared service install {{ cloudflared_tunnel_token }}
+    creates: /etc/systemd/system/cloudflared.service
+
+- name: Ensure cloudflared service is enabled and running
+  ansible.builtin.service:
+    name: cloudflared
+    enabled: true
+    state: started

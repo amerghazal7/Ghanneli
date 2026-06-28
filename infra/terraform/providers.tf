@@ -16,4 +16,6 @@ provider "google" {
   region  = var.region
 }
 
-# Note: no provider "cloudflare" block here — declared for a later task.
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}

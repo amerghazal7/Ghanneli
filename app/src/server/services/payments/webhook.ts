@@ -67,6 +67,16 @@ export async function handleStripeEvent(
   }
   const order = orderRows[0]
 
+  // Crediting always uses the DB-stored order.userId (never the metadata userId)
+  // so a tampered metadata userId can't redirect credits. If they diverge, that
+  // signals tampering or a checkout-creation bug — surface it without blocking.
+  if (userId !== order.userId) {
+    console.warn(
+      '[webhook] metadata userId does not match order.userId; crediting order.userId',
+      { metadataUserId: userId, orderUserId: order.userId, orderId },
+    )
+  }
+
   // Derive credits from pack catalog — NEVER trust event amount fields
   const pack = getPack(order.packId)
   if (!pack) {

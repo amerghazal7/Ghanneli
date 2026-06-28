@@ -7,6 +7,7 @@ import * as schema from '../../src/server/db/schema'
 import { users, orders } from '../../src/server/db/schema'
 import type { Db } from '../../src/server/db/client'
 import { handleStripeEvent } from '../../src/server/services/payments/webhook'
+import { POST as webhookPOST } from '../../src/app/api/webhooks/stripe/route'
 import { getBalance } from '../../src/server/services/credits/ledger'
 import { PACKS } from '../../src/server/services/payments/packs'
 import type { Order } from '../../src/server/db/schema'
@@ -113,5 +114,36 @@ describe('handleStripeEvent', () => {
     }
     await handleStripeEvent(badEvent, db as unknown as Db)
     expect(await getBalance(userId, db as unknown as Db)).toBe(0)
+  })
+})
+
+describe('POST /api/webhooks/stripe signature guard', () => {
+  // These cases return 400 BEFORE handleStripeEvent / getDb() are reached, so
+  // no DB is needed. They prove a request that fails signature checks never
+  // reaches the crediting path.
+  it('missing stripe-signature header → 400', async () => {
+    const req = new Request('http://localhost/api/webhooks/stripe', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'checkout.session.completed' }),
+    })
+    const res = await webhookPOST(req)
+    expect(res.status).toBe(400)
+  })
+
+  it('invalid signature → 400 (constructEvent rejects forged sig)', async () => {
+    const prev = process.env.STRIPE_WEBHOOK_SECRET
+    process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_secret'
+    try {
+      const req = new Request('http://localhost/api/webhooks/stripe', {
+        method: 'POST',
+        headers: { 'stripe-signature': 't=1,v1=deadbeef' },
+        body: JSON.stringify({ type: 'checkout.session.completed' }),
+      })
+      const res = await webhookPOST(req)
+      expect(res.status).toBe(400)
+    } finally {
+      if (prev === undefined) delete process.env.STRIPE_WEBHOOK_SECRET
+      else process.env.STRIPE_WEBHOOK_SECRET = prev
+    }
   })
 })

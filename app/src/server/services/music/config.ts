@@ -6,9 +6,10 @@
 
 import { AceStepCloudProd } from './adapters/cloudProd'
 import { SelfHostStagingAdapter } from './adapters/selfHostStaging'
+import { AceStepLocalAdapter } from './adapters/aceStepLocal'
 import type { MusicGenerationService } from './types'
 
-export type MusicMode = 'cloud-prod' | 'self-host-staging' | 'a-b-compare' | 'fallback'
+export type MusicMode = 'cloud-prod' | 'self-host-staging' | 'a-b-compare' | 'fallback' | 'acestep-local'
 
 export interface MusicRouterConfig {
   mode: MusicMode
@@ -17,7 +18,7 @@ export interface MusicRouterConfig {
   secondary: MusicGenerationService
 }
 
-const VALID_MODES = new Set<string>(['cloud-prod', 'self-host-staging', 'a-b-compare', 'fallback'])
+const VALID_MODES = new Set<string>(['cloud-prod', 'self-host-staging', 'a-b-compare', 'fallback', 'acestep-local'])
 
 function requireEnv(env: NodeJS.ProcessEnv, key: string): string {
   const val = env[key]
@@ -47,6 +48,15 @@ export function loadMusicConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Mu
         token: requireEnv(env, 'AIBACKEND_TOKEN'),
       })
       return { mode, primary: selfHost, secondary: selfHost }
+    }
+
+    case 'acestep-local': {
+      const aceStepLocal = new AceStepLocalAdapter({
+        baseUrl: requireEnv(env, 'ACESTEP_URL'),
+        token: env['ACESTEP_TOKEN'],
+        model: env['ACESTEP_MODEL'],
+      })
+      return { mode, primary: aceStepLocal, secondary: aceStepLocal }
     }
 
     case 'fallback':

@@ -23,6 +23,9 @@ export function createMusicService(config: MusicRouterConfig): MusicGenerationSe
         case 'self-host-staging':
           return config.primary.generate(req)
 
+        case 'acestep-local':
+          return config.primary.generate(req)
+
         case 'fallback': {
           try {
             return await config.primary.generate(req)

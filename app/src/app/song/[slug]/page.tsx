@@ -12,15 +12,27 @@ import { songs } from '../../../server/db/schema'
 interface SharePageContentProps {
   status: string
   previewUri?: string
-  /** fullUri intentionally unused — full audio is gated behind Slice 4 */
   fullUri?: string
+  songId?: string
+  unlocked?: boolean
 }
 
-export function SharePageContent({ status, previewUri }: SharePageContentProps) {
+export function SharePageContent({ status, previewUri, fullUri, songId, unlocked }: SharePageContentProps) {
   if (status === 'ready' && previewUri) {
     return (
       <main>
-        <Player src={previewUri} />
+        {unlocked && fullUri ? (
+          <Player src={fullUri} />
+        ) : (
+          <>
+            <Player src={previewUri} />
+            {songId && (
+              <form method="POST" action={`/api/songs/${songId}/unlock`}>
+                <button type="submit">فتح</button>
+              </form>
+            )}
+          </>
+        )}
         <Link href="/create">اصنع أغنيتك</Link>
       </main>
     )
@@ -50,9 +62,15 @@ export function SharePageContent({ status, previewUri }: SharePageContentProps) 
 export async function getShareSong(
   slug: string,
   db: Db,
-): Promise<{ status: string; previewUri: string | null } | null> {
+): Promise<{ id: string; status: string; previewUri: string | null; fullUri: string | null; unlocked: boolean } | null> {
   const rows = await db
-    .select({ status: songs.status, previewUri: songs.previewUri })
+    .select({
+      id: songs.id,
+      status: songs.status,
+      previewUri: songs.previewUri,
+      fullUri: songs.fullUri,
+      unlocked: songs.unlocked,
+    })
     .from(songs)
     .where(eq(songs.shareSlug, slug))
 
@@ -77,6 +95,9 @@ export default async function SharePage({
     <SharePageContent
       status={song.status}
       previewUri={song.previewUri ?? undefined}
+      fullUri={song.fullUri ?? undefined}
+      songId={song.id}
+      unlocked={song.unlocked}
     />
   )
 }

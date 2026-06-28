@@ -10,6 +10,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
     "drizzle-orm": "^0.44.2",
+    "firebase-admin": "^13",
     "nanoid": "^5",
     "next": "^15",
     "react": "^19",

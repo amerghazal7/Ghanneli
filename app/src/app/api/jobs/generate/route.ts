@@ -14,7 +14,7 @@ import { getDb } from '../../../../server/db/client'
 import { createLyricsService } from '../../../../server/services/lyrics/service'
 import { createMusicService } from '../../../../server/services/music/router'
 import { loadMusicConfigFromEnv } from '../../../../server/services/music/config'
-import { runGeneration } from '../../../../server/services/pipeline'
+import { handleGenerationJob } from '../../../../server/jobs/worker'
 import type { StoreDep } from '../../../../server/services/pipeline'
 import type { MusicTake } from '../../../../server/services/music/types'
 import { anthropic } from '@ai-sdk/anthropic'
@@ -66,7 +66,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const lyrics = createLyricsService({ model: anthropic('claude-3-haiku-20240307') })
   const music = createMusicService(loadMusicConfigFromEnv())
 
-  await runGeneration(songId, { lyrics, music, store: storeStub, db })
+  // runGeneration sets status='failed' and re-throws on pipeline errors. Surface
+  // a clean 5xx (no stack) so Cloud Tasks retries without leaking internals.
+  try {
+    await handleGenerationJob(songId, { lyrics, music, store: storeStub, db })
+  } catch {
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true }, { status: 200 })
 }

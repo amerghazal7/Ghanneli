@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSongStatus } from '../useSongStatus'
 
 const DIALECTS = ['khaleeji', 'egyptian', 'levantine', 'maghrebi', 'iraqi'] as const
 type Dialect = (typeof DIALECTS)[number]
@@ -34,7 +35,10 @@ const initial: State = {
 export function Wizard() {
   const [step, setStep] = useState(1)
   const [state, setState] = useState<State>(initial)
-  const [submitted, setSubmitted] = useState(false)
+  const [songId, setSongId] = useState<string | null>(null)
+  const [shareSlug, setShareSlug] = useState<string | null>(null)
+
+  const songStatus = useSongStatus(songId)
 
   function set<K extends keyof State>(key: K, value: State[K]) {
     setState((s) => ({ ...s, [key]: value }))
@@ -53,16 +57,26 @@ export function Wizard() {
       voiceGender: state.voiceGender,
       lengthHint: state.lengthHint,
     }
-    await fetch('/api/songs', {
+    const res = await fetch('/api/songs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    setSubmitted(true)
+    const data = (await res.json()) as { songId: string; shareSlug: string }
+    setShareSlug(data.shareSlug)
+    setSongId(data.songId)
   }
 
-  if (submitted) {
-    return <p>تم إرسال طلبك بنجاح!</p>
+  if (songId) {
+    if (songStatus.status === 'ready' && shareSlug) {
+      // Redirect to share page
+      window.location.href = `/song/${shareSlug}`
+      return <p>جاري التحويل…</p>
+    }
+    if (songStatus.error) {
+      return <p>حدث خطأ. يرجى المحاولة مجدداً.</p>
+    }
+    return <p>جاري إنشاء أغنيتك…</p>
   }
 
   return (

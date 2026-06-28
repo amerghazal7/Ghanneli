@@ -1,0 +1,40 @@
+# Keep the Docker build context small and free of host-specific artifacts.
+# Critical: host node_modules is a pnpm symlink farm that breaks `COPY . .`
+# ("invalid file request ... node_modules/...") and bloats the context to ~1GB.
+# Images install dependencies fresh via `pnpm install --frozen-lockfile`.
+
+# Node / pnpm
+**/node_modules
+.pnpm-store
+
+# Build outputs
+**/.next
+**/dist
+**/build
+**/out
+**/*.tsbuildinfo
+
+# Python (ai-backend) virtualenvs + caches
+**/.venv*
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+
+# VCS + tooling scratch
+.git
+.github
+.superpowers
+**/.turbo
+coverage
+
+# Local env / secrets — never bake into an image
+.env
+.env.local
+**/.env.local
+
+# Editor / OS cruft
+.vscode
+.idea
+**/.DS_Store
+**/*.log

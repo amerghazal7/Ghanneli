@@ -1,0 +1,30 @@
+# Ghanneli AI Backend — local fake engine (no GPU)
+#
+# Build:
+#   docker build -f Dockerfile.fake -t ghanneli-fake-engine .
+#
+# Run:
+#   docker run -p 9000:9000 ghanneli-fake-engine
+#
+# The container exposes:
+#   POST /generate        — fake music generation (returns canned WAV URIs)
+#   GET  /audio/canned.wav — short sine-wave WAV served in-memory
+#   GET  /healthz          — liveness probe
+
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Copy project files
+COPY pyproject.toml ./
+COPY app/ ./app/
+
+# Install only the runtime dependencies (fastapi + uvicorn; no torch/GPU)
+RUN pip install --no-cache-dir fastapi "uvicorn[standard]"
+
+EXPOSE 9000
+
+CMD ["uvicorn", "app.serving.fake_main:app", "--host", "0.0.0.0", "--port", "9000"]

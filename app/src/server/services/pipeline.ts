@@ -77,7 +77,9 @@ export async function runGeneration(songId: string, deps: GenerationDeps): Promi
     }
 
     // 7. Generate music
+    const t0 = Date.now()
     const musicResult = await music.generate(musicReq)
+    const latencyMs = Date.now() - t0
 
     // 8. Status → postprocess
     await db.update(songs).set({ status: 'postprocess' }).where(eq(songs.id, songId))
@@ -99,7 +101,15 @@ export async function runGeneration(songId: string, deps: GenerationDeps): Promi
       .where(eq(songs.id, songId))
 
     // 11. Optionally emit success event
-    events?.emit('generation.completed', { songId })
+    events?.emit('generation.completed', {
+      songId,
+      engineId: musicResult.engineId,
+      engineVersion: musicResult.engineVersion,
+      dialect: song.dialect,
+      genre: song.genre,
+      latencyMs,
+      regenerated: false,
+    })
   } catch (e) {
     // On any error: mark failed and emit, but never let a secondary failure
     // (e.g. the status write itself throwing) mask the original error.

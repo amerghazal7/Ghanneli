@@ -5,6 +5,8 @@ import { Unauthorized } from '../../../server/auth/verify'
 import { getDb, type Db } from '../../../server/db/client'
 import { songs } from '../../../server/db/schema'
 import { enqueueGeneration } from '../../../server/jobs/enqueue'
+import type { AnalyticsEvent } from '../../../server/services/analytics/events'
+import { emitDefault } from '../../../server/services/analytics/wiring'
 
 export const bodySchema = z.object({
   occasion: z.string().min(1),
@@ -27,7 +29,8 @@ export async function createSong(
     db,
     userId,
     enqueue,
-  }: { db: Db; userId: string; enqueue: (songId: string) => Promise<void> },
+    emitEvent = async () => {},
+  }: { db: Db; userId: string; enqueue: (songId: string) => Promise<void>; emitEvent?: (e: AnalyticsEvent) => Promise<void> },
 ): Promise<{ songId: string; shareSlug: string }> {
   const { occasion, dialect, genre, voiceGender, recipient, sender, relationship, details, mood, lengthHint } = input
 
@@ -45,6 +48,8 @@ export async function createSong(
     .returning()
 
   await enqueue(song.id)
+
+  await emitEvent({ type: 'wizard_started' })
 
   return { songId: song.id, shareSlug: song.shareSlug }
 }
@@ -77,6 +82,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     db: getDb(),
     userId,
     enqueue: enqueueGeneration,
+    emitEvent: emitDefault,
   })
 
   return NextResponse.json(result, { status: 201 })

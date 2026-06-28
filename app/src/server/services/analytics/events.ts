@@ -32,7 +32,8 @@ export interface PreviewGeneratedEvent {
 
 export interface PurchaseCompletedEvent {
   readonly type: 'purchase_completed'
-  readonly songId: string
+  /** Optional: omitted when emitting from the Stripe webhook (no songId on the order). */
+  readonly songId?: string
   /** Amount charged in integer minor units (e.g. 499 = $4.99 USD). */
   readonly amountMinor: number
   /** ISO 4217 currency code (e.g. "USD"). */

@@ -3,6 +3,7 @@ import { orders } from '../../db/schema'
 import { type Db, getDb } from '../../db/client'
 import { credit } from '../credits/ledger'
 import { getPack } from './packs'
+import { emitDefault } from '../analytics/wiring'
 
 // ---------------------------------------------------------------------------
 // Minimal shape we need from a Stripe event (real or test-fabricated).
@@ -89,4 +90,8 @@ export async function handleStripeEvent(
 
   // Mark order paid — idempotent (set is safe to re-apply)
   await db.update(orders).set({ status: 'paid' }).where(eq(orders.id, orderId))
+
+  // Emit purchase_completed (songId omitted — not on the order)
+  // Swallowed by emitDefault; a publish failure must not turn a successful credit into a 500.
+  await emitDefault({ type: 'purchase_completed', amountMinor: order.amountMinor, currency: order.currency })
 }

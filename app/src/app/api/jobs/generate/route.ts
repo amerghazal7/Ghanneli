@@ -17,6 +17,8 @@ import { createMusicService } from '../../../../server/services/music/router'
 import { loadMusicConfigFromEnv } from '../../../../server/services/music/config'
 import { handleGenerationJob } from '../../../../server/jobs/worker'
 import type { StoreDep } from '../../../../server/services/pipeline'
+import { createAnalyticsEvents } from '../../../../server/services/analytics/wiring'
+import { getPublisher } from '../../../../server/services/analytics/emit'
 import { postProcess } from '../../../../server/services/audio/postprocess'
 // StoreDep is satisfied by the prodStore closure below
 import { createProdR2Client } from '../../../../server/services/storage/r2'
@@ -90,7 +92,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // runGeneration sets status='failed' and re-throws on pipeline errors. Surface
   // a clean 5xx (no stack) so Cloud Tasks retries without leaking internals.
   try {
-    await handleGenerationJob(songId, { lyrics, music, store: prodStore, db })
+    await handleGenerationJob(songId, { lyrics, music, store: prodStore, db, events: createAnalyticsEvents(getPublisher()) })
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }

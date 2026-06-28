@@ -34,7 +34,13 @@ export function createR2Client(s3: S3Client, config: R2Config): R2Client {
   }
 }
 
-/** Build a production R2Client from environment variables. */
+/** Build a production R2Client from environment variables.
+ *
+ * When `R2_ENDPOINT` is set (local dev / MinIO), the S3 client uses that
+ * endpoint and enables path-style addressing (`forcePathStyle: true`) which
+ * MinIO requires.  When unset the behaviour is identical to the original
+ * Cloudflare R2 endpoint — prod is completely unaffected.
+ */
 export function createProdR2Client(): R2Client {
   const accountId = process.env['R2_ACCOUNT_ID'] ?? ''
   const accessKeyId = process.env['R2_ACCESS_KEY_ID'] ?? ''
@@ -42,10 +48,17 @@ export function createProdR2Client(): R2Client {
   const bucket = process.env['R2_BUCKET'] ?? ''
   const publicBaseUrl = process.env['R2_PUBLIC_BASE_URL'] ?? ''
 
+  // R2_ENDPOINT override: when set, use that endpoint with forcePathStyle (MinIO).
+  // When unset, fall back to the standard Cloudflare R2 endpoint (prod behaviour).
+  const customEndpoint = process.env['R2_ENDPOINT']
+  const endpoint = customEndpoint ?? `https://${accountId}.r2.cloudflarestorage.com`
+  const forcePathStyle = customEndpoint !== undefined && customEndpoint !== ''
+
   const s3 = new S3Client({
     region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    endpoint,
     credentials: { accessKeyId, secretAccessKey },
+    ...(forcePathStyle ? { forcePathStyle: true } : {}),
   })
 
   return createR2Client(s3, { bucket, publicBaseUrl })

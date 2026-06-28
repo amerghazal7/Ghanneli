@@ -1,4 +1,4 @@
-import { generateObject } from 'ai'
+﻿import { generateObject } from 'ai'
 import { z } from 'zod'
 import type { LanguageModel } from 'ai'
 import { buildPrompt } from './prompts'
@@ -10,20 +10,39 @@ const LyricsOutputSchema = z.object({
   language: z.literal('ar'),
 })
 
-export function createLyricsService(opts: { model: LanguageModel }): LyricsService {
+export function createLyricsService(opts: {
+  model: LanguageModel
+  fallbackModel?: LanguageModel
+}): LyricsService {
   return {
     async generateLyrics(r: LyricsRequest): Promise<LyricsResult> {
       const prompt = buildPrompt(r)
-      const { object } = await generateObject({
-        model: opts.model,
-        schema: LyricsOutputSchema,
-        prompt,
-      })
-      return {
-        taggedLyricsArabic: object.taggedLyricsArabic,
-        transliteration: object.transliteration,
-        language: 'ar',
-        meta: { model: opts.model.modelId },
+
+      async function tryGenerate(m: LanguageModel): Promise<LyricsResult> {
+        const { object } = await generateObject({
+          model: m,
+          schema: LyricsOutputSchema,
+          prompt,
+        })
+        return {
+          taggedLyricsArabic: object.taggedLyricsArabic,
+          transliteration: object.transliteration,
+          language: 'ar',
+          meta: { model: m.modelId },
+        }
+      }
+
+      try {
+        return await tryGenerate(opts.model)
+      } catch (primaryErr) {
+        if (opts.fallbackModel) {
+          console.warn(
+            `[lyrics] Primary model "${opts.model.modelId}" failed, falling back to "${opts.fallbackModel.modelId}":`,
+            primaryErr,
+          )
+          return await tryGenerate(opts.fallbackModel)
+        }
+        throw primaryErr
       }
     },
   }

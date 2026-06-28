@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1",
+    "@ai-sdk/google": "^1",
     "@aws-sdk/client-s3": "^3.1075.0",
     "@google-cloud/pubsub": "^5.3.1",
     "@google-cloud/tasks": "^6.2.3",

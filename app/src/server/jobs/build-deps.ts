@@ -1,4 +1,4 @@
-/**
+﻿/**
  * buildGenerationDeps — constructs the production GenerationDeps used by both
  * the Cloud Tasks push route (api/jobs/generate/route.ts) and the BullMQ pull
  * worker (bullmq-worker.ts).
@@ -10,6 +10,7 @@
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
 import { anthropic } from '@ai-sdk/anthropic'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { getDb } from '../db/client'
 import { createLyricsService } from '../services/lyrics/service'
 import { createMusicService } from '../services/music/router'
@@ -49,8 +50,17 @@ export function buildGenerationDeps(): GenerationDeps {
       }),
   }
 
+  // Gemini primary — honours GEMINI_API_KEY explicitly (the default env var
+  // for @ai-sdk/google is GOOGLE_GENERATIVE_AI_API_KEY, so we pass it here).
+  const googleProvider = createGoogleGenerativeAI({
+    apiKey: process.env['GEMINI_API_KEY'],
+  })
+
   return {
-    lyrics: createLyricsService({ model: anthropic(process.env.LYRICS_MODEL ?? 'claude-3-5-haiku-latest') }),
+    lyrics: createLyricsService({
+      model: googleProvider(process.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash'),
+      fallbackModel: anthropic(process.env['LYRICS_MODEL'] ?? 'claude-3-5-haiku-latest'),
+    }),
     music: createMusicService(loadMusicConfigFromEnv()),
     store: prodStore,
     events: createAnalyticsEvents(getPublisher()),

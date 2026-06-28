@@ -11,16 +11,24 @@ import { type TokenVerifier, getUserFromRequest } from './verify'
 // ---------------------------------------------------------------------------
 
 function ensureFirebaseApp(): void {
-  if (getApps().length === 0) {
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Cloud Run injects the key with literal \n — restore real newlines.
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    })
+  if (getApps().length > 0) return
+
+  // Emulator mode: when FIREBASE_AUTH_EMULATOR_HOST is set, the Admin SDK talks
+  // to the local Auth emulator and skips signature verification, so no real
+  // service-account credential is needed (and cert() would reject dummy keys).
+  if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID })
+    return
   }
+
+  initializeApp({
+    credential: cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      // Cloud Run injects the key with literal \n — restore real newlines.
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  })
 }
 
 // ---------------------------------------------------------------------------

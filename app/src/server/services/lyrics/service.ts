@@ -6,7 +6,7 @@ import type { LyricsRequest, LyricsResult, LyricsService } from './types'
 
 const LyricsOutputSchema = z.object({
   taggedLyricsArabic: z.string().min(1),
-  transliteration: z.string(),
+  transliteration: z.string().min(1),
   language: z.literal('ar'),
 })
 

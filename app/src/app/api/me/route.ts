@@ -13,7 +13,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     if (err instanceof Unauthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    throw err
   }
 
   const data = await getMe(userId, getDb())

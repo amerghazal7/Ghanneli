@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type TagColor = 'gold' | 'rose' | 'muted'
+export type TagColor = 'gold' | 'rose' | 'muted' | 'danger'
 
 interface TagProps {
   children: ReactNode

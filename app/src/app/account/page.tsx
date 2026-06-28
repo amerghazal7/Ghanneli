@@ -40,9 +40,9 @@ export default function AccountPage() {
     router.push('/')
   }
 
-  function statusTagColor(status: string): 'gold' | 'rose' | 'muted' {
+  function statusTagColor(status: string): 'gold' | 'danger' | 'muted' {
     if (status === 'ready') return 'gold'
-    if (status === 'failed') return 'rose'
+    if (status === 'failed') return 'danger'
     return 'muted'
   }
 

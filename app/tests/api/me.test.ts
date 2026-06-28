@@ -75,12 +75,12 @@ describe('getMe', () => {
 
     const [songA] = await db
       .insert(songs)
-      .values({ ...songDefaults, userId: user.id, occasion: 'عيد ميلاد أ' })
+      .values({ ...songDefaults, userId: user.id, occasion: 'عيد ميلاد أ', createdAt: new Date(Date.now() - 1000) })
       .returning()
 
     const [songB] = await db
       .insert(songs)
-      .values({ ...songDefaults, userId: user.id, occasion: 'عيد ميلاد ب' })
+      .values({ ...songDefaults, userId: user.id, occasion: 'عيد ميلاد ب', createdAt: new Date() })
       .returning()
 
     const result = await getMe(user.id, db as unknown as Db)

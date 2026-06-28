@@ -11,44 +11,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { OAuth2Client } from 'google-auth-library'
-import { getDb } from '../../../../server/db/client'
-import { createLyricsService } from '../../../../server/services/lyrics/service'
-import { createMusicService } from '../../../../server/services/music/router'
-import { loadMusicConfigFromEnv } from '../../../../server/services/music/config'
 import { handleGenerationJob } from '../../../../server/jobs/worker'
-import type { StoreDep } from '../../../../server/services/pipeline'
-import { createAnalyticsEvents } from '../../../../server/services/analytics/wiring'
-import { getPublisher } from '../../../../server/services/analytics/emit'
-import { postProcess } from '../../../../server/services/audio/postprocess'
-// StoreDep is satisfied by the prodStore closure below
-import { createProdR2Client } from '../../../../server/services/storage/r2'
-import { exec } from 'node:child_process'
-import { promisify } from 'node:util'
-import { anthropic } from '@ai-sdk/anthropic'
+import { buildGenerationDeps } from '../../../../server/jobs/build-deps'
 
 const authClient = new OAuth2Client()
-const execAsync = promisify(exec)
-
-// Production ffmpeg runner — shells out to the system ffmpeg binary.
-async function runFfmpeg(args: string[]): Promise<void> {
-  const escaped = args.map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ')
-  await execAsync(`ffmpeg ${escaped}`)
-}
-
-// Production StoreDep: closes over real ffmpeg runner + R2 client from env vars.
-const prodStore: StoreDep = {
-  postProcess: (take) =>
-    postProcess(take, {
-      runFfmpeg,
-      r2: createProdR2Client(),
-      config: {
-        watermarkPath: process.env['WATERMARK_ASSET_PATH'] ?? '/assets/watermark.mp3',
-        previewLengthSec: 30,
-        bucket: process.env['R2_BUCKET'] ?? '',
-        publicBaseUrl: process.env['R2_PUBLIC_BASE_URL'] ?? '',
-      },
-    }),
-}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // 1. Extract OIDC token from Authorization header
@@ -85,14 +51,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // 4. Build prod deps and run generation
-  const db = getDb()
-  const lyrics = createLyricsService({ model: anthropic('claude-3-haiku-20240307') })
-  const music = createMusicService(loadMusicConfigFromEnv())
-
   // runGeneration sets status='failed' and re-throws on pipeline errors. Surface
   // a clean 5xx (no stack) so Cloud Tasks retries without leaking internals.
   try {
-    await handleGenerationJob(songId, { lyrics, music, store: prodStore, db, events: createAnalyticsEvents(getPublisher()) })
+    await handleGenerationJob(songId, buildGenerationDeps())
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }

@@ -17,10 +17,13 @@ describe('createQueue factory', () => {
     expect(q.constructor.name).toBe('CloudTasksQueue')
   })
 
-  it('throws "not yet implemented" for QUEUE_DRIVER=bullmq', async () => {
+  it('returns a BullMqQueue for QUEUE_DRIVER=bullmq', async () => {
     process.env.QUEUE_DRIVER = 'bullmq'
+    process.env.REDIS_URL = 'redis://localhost:6379'
     const { createQueue } = await import('../../src/server/jobs/queue/factory')
-    expect(() => createQueue()).toThrow('not yet implemented')
+    const q = createQueue()
+    expect(q.constructor.name).toBe('BullMqQueue')
+    delete process.env.REDIS_URL
   })
 
   it('throws on unknown QUEUE_DRIVER', async () => {

@@ -1,4 +1,5 @@
 import { CloudTasksQueue } from './cloud-tasks'
+import { BullMqQueue } from './bullmq'
 import type { QueueAdapter } from './types'
 
 export function createQueue(): QueueAdapter {
@@ -9,7 +10,7 @@ export function createQueue(): QueueAdapter {
   }
 
   if (driver === 'bullmq') {
-    throw new Error('bullmq queue driver not yet implemented')
+    return new BullMqQueue()
   }
 
   throw new Error(`Unknown QUEUE_DRIVER: "${driver}"`)

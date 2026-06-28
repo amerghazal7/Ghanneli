@@ -4,8 +4,9 @@
  * Cloud Tasks worker endpoint. Verifies the OIDC token from Google Cloud Tasks,
  * then calls runGeneration with production deps.
  *
- * Security: Rejects requests without a valid OIDC token issued by Google,
- * with issuer accounts.google.com and audience matching WORKER_URL.
+ * Security: Rejects requests without a valid OIDC token issued by Google
+ * (issuer accounts.google.com or https://accounts.google.com) with audience
+ * matching WORKER_URL.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -44,7 +45,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const ticket = await authClient.verifyIdToken({ idToken: token, audience: workerUrl })
     const payload = ticket.getPayload()
-    if (!payload || payload.iss !== 'accounts.google.com') {
+    // Google issues OIDC tokens with either issuer form; verifyIdToken already
+    // validates the issuer, so accept both rather than reject valid prod tokens.
+    const validIssuers = ['accounts.google.com', 'https://accounts.google.com']
+    if (!payload || !validIssuers.includes(payload.iss ?? '')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
   } catch {

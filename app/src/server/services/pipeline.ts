@@ -101,8 +101,13 @@ export async function runGeneration(songId: string, deps: GenerationDeps): Promi
     // 11. Optionally emit success event
     events?.emit('generation.completed', { songId })
   } catch (e) {
-    // On any error: mark failed, emit event, re-throw
-    await db.update(songs).set({ status: 'failed' }).where(eq(songs.id, songId))
+    // On any error: mark failed and emit, but never let a secondary failure
+    // (e.g. the status write itself throwing) mask the original error.
+    try {
+      await db.update(songs).set({ status: 'failed' }).where(eq(songs.id, songId))
+    } catch {
+      // swallow: the original error `e` is the one worth surfacing
+    }
     events?.emit('generation.failed', { songId, error: e })
     throw e
   }

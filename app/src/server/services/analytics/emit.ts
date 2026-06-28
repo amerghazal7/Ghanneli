@@ -36,6 +36,8 @@ const PII_FIELDS = [
   'lyrics',
   'transliteration',
   'taggedLyrics',
+  'relationship',
+  'mood',
 ] as const
 
 /**

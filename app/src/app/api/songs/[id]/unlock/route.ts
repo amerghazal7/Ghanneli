@@ -17,6 +17,13 @@ export class NotFoundError extends Error {
   }
 }
 
+export class SongNotReadyError extends Error {
+  constructor(message = 'Song not ready') {
+    super(message)
+    this.name = 'SongNotReadyError'
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Testable core
 // ---------------------------------------------------------------------------
@@ -39,6 +46,7 @@ export async function unlockSong(
       id: songs.id,
       userId: songs.userId,
       fullUri: songs.fullUri,
+      status: songs.status,
     })
     .from(songs)
     .where(and(eq(songs.id, songId), eq(songs.userId, userId)))
@@ -51,11 +59,16 @@ export async function unlockSong(
 
   const song = rows[0]
 
-  // 2. Debit 1 credit — idempotent by (reason='song', refId=songId)
+  // 2. Guard: only unlock a song whose audio is ready — don't burn a credit otherwise
+  if (song.status !== 'ready') {
+    throw new SongNotReadyError('Song not ready')
+  }
+
+  // 4. Debit 1 credit — idempotent by (reason='song', refId=songId)
   // If already applied this will no-op; if balance is insufficient it throws.
   await debit(userId, 1, 'song', songId, db)
 
-  // 3. Mark as unlocked (idempotent — safe to run even if already true)
+  // 5. Mark as unlocked (idempotent — safe to run even if already true)
   await db
     .update(songs)
     .set({ unlocked: true })
@@ -95,6 +108,9 @@ export async function POST(
     }
     if (err instanceof NotFoundError) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    if (err instanceof SongNotReadyError) {
+      return NextResponse.json({ error: 'Song not ready' }, { status: 409 })
     }
     throw err
   }

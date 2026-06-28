@@ -118,7 +118,7 @@ export async function runGeneration(songId: string, deps: GenerationDeps): Promi
     } catch {
       // swallow: the original error `e` is the one worth surfacing
     }
-    events?.emit('generation.failed', { songId, error: e })
+    events?.emit('generation.failed', { songId, error: e instanceof Error ? e.message : String(e) })
     throw e
   }
 }

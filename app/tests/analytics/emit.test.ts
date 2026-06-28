@@ -51,12 +51,25 @@ describe('analytics emit', () => {
     const piiFields = [
       'story', 'recipient', 'sender', 'details', 'email',
       'lyrics', 'transliteration', 'taggedLyrics',
+      'relationship', 'mood',
     ]
     for (const field of piiFields) {
       expect(() =>
         assertNoPii({ type: 'wizard_started', [field]: 'some text' } as any),
       ).toThrow(`PII field "${field}"`)
     }
+  })
+
+  it('assertNoPii throws for relationship field (spec-forbidden PII)', () => {
+    expect(() =>
+      assertNoPii({ type: 'wizard_started', relationship: 'x' } as any),
+    ).toThrow('PII field "relationship"')
+  })
+
+  it('assertNoPii throws for mood field (spec-forbidden PII)', () => {
+    expect(() =>
+      assertNoPii({ type: 'wizard_started', mood: 'happy' } as any),
+    ).toThrow('PII field "mood"')
   })
 
   // Type-level: `story` is not assignable to any AnalyticsEvent variant.

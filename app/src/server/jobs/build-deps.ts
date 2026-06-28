@@ -50,7 +50,7 @@ export function buildGenerationDeps(): GenerationDeps {
   }
 
   return {
-    lyrics: createLyricsService({ model: anthropic('claude-3-haiku-20240307') }),
+    lyrics: createLyricsService({ model: anthropic(process.env.LYRICS_MODEL ?? 'claude-3-5-haiku-latest') }),
     music: createMusicService(loadMusicConfigFromEnv()),
     store: prodStore,
     events: createAnalyticsEvents(getPublisher()),

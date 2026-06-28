@@ -7,7 +7,7 @@ import * as schema from '../../src/server/db/schema'
 import { users, songs } from '../../src/server/db/schema'
 import type { Db } from '../../src/server/db/client'
 import { getBalance, credit } from '../../src/server/services/credits/ledger'
-import { unlockSong } from '../../src/app/api/songs/[id]/unlock/route'
+import { unlockSong, SongNotReadyError } from '../../src/app/api/songs/[id]/unlock/route'
 import { InsufficientCreditsError } from '../../src/server/services/credits/ledger'
 
 type TestDb = ReturnType<typeof drizzle<typeof schema>>
@@ -133,5 +133,70 @@ describe('unlockSong', () => {
     } finally {
       consoleSpy.mockRestore()
     }
+  })
+
+  it('non-ready song (generating) → throws SongNotReadyError before debit; balance unchanged, unlocked stays false', async () => {
+    // Insert a song in 'generating' status (not ready)
+    const [generatingSong] = await db
+      .insert(songs)
+      .values({
+        userId,
+        occasion: 'عيد ميلاد',
+        dialect: 'egyptian',
+        genre: 'pop',
+        voiceGender: 'female',
+        status: 'generating',
+        inputs: {
+          recipient: 'أحمد',
+          sender: 'سارة',
+          relationship: 'صديق',
+          details: ['يحب الموسيقى'],
+          mood: 'سعيد',
+          lengthHint: 'standard',
+        },
+      })
+      .returning()
+
+    // Give the user a credit so we can verify it is NOT consumed
+    await credit(userId, 1, 'purchase', `order-not-ready-${Math.random()}`, tdb)
+    const balanceBefore = await getBalance(userId, tdb)
+    expect(balanceBefore).toBe(1)
+
+    await expect(unlockSong(generatingSong.id, userId, tdb)).rejects.toThrow(SongNotReadyError)
+
+    // Balance must be unchanged — no debit was applied
+    expect(await getBalance(userId, tdb)).toBe(1)
+
+    // Song must still be locked
+    const [row] = await db.select({ unlocked: songs.unlocked }).from(songs).where(eq(songs.id, generatingSong.id))
+    expect(row.unlocked).toBe(false)
+  })
+
+  it('non-ready song (pending) → throws SongNotReadyError', async () => {
+    const [pendingSong] = await db
+      .insert(songs)
+      .values({
+        userId,
+        occasion: 'عيد ميلاد',
+        dialect: 'egyptian',
+        genre: 'pop',
+        voiceGender: 'female',
+        status: 'pending',
+        inputs: {
+          recipient: 'أحمد',
+          sender: 'سارة',
+          relationship: 'صديق',
+          details: ['يحب الموسيقى'],
+          mood: 'سعيد',
+          lengthHint: 'standard',
+        },
+      })
+      .returning()
+
+    await credit(userId, 1, 'purchase', `order-pending-${Math.random()}`, tdb)
+
+    await expect(unlockSong(pendingSong.id, userId, tdb)).rejects.toThrow(SongNotReadyError)
+    // Balance must be untouched — debit must not have fired
+    expect(await getBalance(userId, tdb)).toBe(1)
   })
 })

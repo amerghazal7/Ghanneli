@@ -3,6 +3,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -50,6 +51,15 @@ export type NewUser = typeof users.$inferInsert
 // songs
 // ---------------------------------------------------------------------------
 
+export interface SongInputs {
+  recipient: string
+  sender: string
+  relationship: string
+  details: string[]
+  mood: string
+  lengthHint: 'short' | 'standard'
+}
+
 export const songs = pgTable(
   'songs',
   {
@@ -72,6 +82,7 @@ export const songs = pgTable(
     engineId: text('engine_id'),
     engineVersion: text('engine_version'),
     lyricsModel: text('lyrics_model'),
+    inputs: jsonb('inputs').$type<SongInputs>().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index('songs_user_id_idx').on(table.userId)],

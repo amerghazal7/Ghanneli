@@ -32,17 +32,39 @@ export function loadMusicConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Mu
   }
   const mode = rawMode as MusicMode
 
-  // Both adapters are always constructed so that fallback/a-b-compare are fully wired at startup.
-  const cloudProd = new AceStepCloudProd({
-    baseUrl: requireEnv(env, 'CLOUD_ENGINE_URL'),
-    apiToken: requireEnv(env, 'CLOUD_ENGINE_TOKEN'),
-  })
+  switch (mode) {
+    case 'cloud-prod': {
+      const cloudProd = new AceStepCloudProd({
+        baseUrl: requireEnv(env, 'CLOUD_ENGINE_URL'),
+        apiToken: requireEnv(env, 'CLOUD_ENGINE_TOKEN'),
+      })
+      return { mode, primary: cloudProd, secondary: cloudProd }
+    }
 
-  const selfHost = new SelfHostStagingAdapter({
-    baseUrl: requireEnv(env, 'AIBACKEND_URL'),
-    token: requireEnv(env, 'AIBACKEND_TOKEN'),
-  })
+    case 'self-host-staging': {
+      const selfHost = new SelfHostStagingAdapter({
+        baseUrl: requireEnv(env, 'AIBACKEND_URL'),
+        token: requireEnv(env, 'AIBACKEND_TOKEN'),
+      })
+      return { mode, primary: selfHost, secondary: selfHost }
+    }
 
-  // In fallback mode: production prefers cloud, falls back to the lab.
-  return { mode, primary: cloudProd, secondary: selfHost }
+    case 'fallback':
+    case 'a-b-compare': {
+      const cloudProd = new AceStepCloudProd({
+        baseUrl: requireEnv(env, 'CLOUD_ENGINE_URL'),
+        apiToken: requireEnv(env, 'CLOUD_ENGINE_TOKEN'),
+      })
+      const selfHost = new SelfHostStagingAdapter({
+        baseUrl: requireEnv(env, 'AIBACKEND_URL'),
+        token: requireEnv(env, 'AIBACKEND_TOKEN'),
+      })
+      return { mode, primary: cloudProd, secondary: selfHost }
+    }
+
+    default: {
+      const exhaustive: never = mode
+      throw new Error(`Unknown mode: ${String(exhaustive)}`)
+    }
+  }
 }

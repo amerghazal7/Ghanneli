@@ -37,6 +37,14 @@ describe('schema', () => {
         genre: 'ballad',
         voiceGender: 'female',
         status: 'pending',
+        inputs: {
+          recipient: 'Ali',
+          sender: 'Sara',
+          relationship: 'friend',
+          details: ['loves ballads'],
+          mood: 'happy',
+          lengthHint: 'standard',
+        },
       })
       .returning()
 

@@ -9,10 +9,12 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1",
+    "@google-cloud/tasks": "^6.2.3",
     "@neondatabase/serverless": "^0.10.4",
     "ai": "^4",
     "drizzle-orm": "^0.44.2",
     "firebase-admin": "^13",
+    "google-auth-library": "^10.9.0",
     "nanoid": "^5",
     "next": "^15",
     "react": "^19",

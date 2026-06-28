@@ -20,22 +20,37 @@ export interface QueueLike {
 }
 
 export class BullMqQueue implements QueueAdapter {
-  private readonly queue: QueueLike
+  private readonly injected: QueueLike | undefined
+  private readonly redisUrl: string | undefined
+  private queue: QueueLike | undefined
 
   constructor(queue?: QueueLike) {
-    if (queue) {
-      this.queue = queue
-    } else {
+    this.injected = queue
+    if (!queue) {
+      // Validate config eagerly (fail fast); the bullmq import itself is deferred.
       const redisUrl = process.env['REDIS_URL']
       if (!redisUrl) throw new Error('Missing required env var: REDIS_URL')
-      // Dynamic require keeps bullmq out of the module graph when a fake is injected.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { Queue } = require('bullmq') as typeof import('bullmq')
-      this.queue = new Queue('generate', { connection: { url: redisUrl } })
+      this.redisUrl = redisUrl
     }
   }
 
+  /**
+   * Resolve the underlying queue. A real bullmq Queue is created lazily via an
+   * ESM dynamic import on first use (the package is "type":"module", so a
+   * top-level require() is not defined at runtime). When a fake QueueLike is
+   * injected (tests), bullmq is never imported and no Redis connection opens.
+   */
+  private async getQueue(): Promise<QueueLike> {
+    if (this.injected) return this.injected
+    if (!this.queue) {
+      const { Queue } = await import('bullmq')
+      this.queue = new Queue('generate', { connection: { url: this.redisUrl } })
+    }
+    return this.queue
+  }
+
   async enqueue(jobName: string, payload: unknown): Promise<void> {
-    await this.queue.add(jobName, payload)
+    const queue = await this.getQueue()
+    await queue.add(jobName, payload)
   }
 }

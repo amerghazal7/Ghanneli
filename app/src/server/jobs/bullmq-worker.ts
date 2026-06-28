@@ -42,29 +42,31 @@ export async function processJob(
 // ---------------------------------------------------------------------------
 
 if (process.env['NODE_ENV'] !== 'test') {
-  const redisUrl = process.env['REDIS_URL']
-  if (!redisUrl) throw new Error('Missing required env var: REDIS_URL')
+  void (async () => {
+    const redisUrl = process.env['REDIS_URL']
+    if (!redisUrl) throw new Error('Missing required env var: REDIS_URL')
 
-  // Dynamic require so the module can be imported in tests without triggering
-  // a real Redis connection.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Worker } = require('bullmq') as typeof import('bullmq')
+    // ESM dynamic import (the package is "type":"module", so require() is not
+    // defined at runtime). Kept out of the test path — tests import processJob
+    // directly and never run this bootstrap (NODE_ENV==='test').
+    const { Worker } = await import('bullmq')
 
-  const worker = new Worker(
-    'generate',
-    async (job) => {
-      await processJob(job as GenerationJob, buildGenerationDeps())
-    },
-    { connection: { url: redisUrl } },
-  )
+    const worker = new Worker(
+      'generate',
+      async (job) => {
+        await processJob(job as GenerationJob, buildGenerationDeps())
+      },
+      { connection: { url: redisUrl } },
+    )
 
-  worker.on('completed', (job) => {
-    console.log(`[bullmq-worker] job ${job.id} completed (songId=${String(job.data?.songId)})`)
-  })
+    worker.on('completed', (job) => {
+      console.log(`[bullmq-worker] job ${job.id} completed (songId=${String(job.data?.songId)})`)
+    })
 
-  worker.on('failed', (job, err) => {
-    console.error(`[bullmq-worker] job ${job?.id} failed (songId=${String(job?.data?.songId)}):`, err)
-  })
+    worker.on('failed', (job, err) => {
+      console.error(`[bullmq-worker] job ${job?.id} failed (songId=${String(job?.data?.songId)}):`, err)
+    })
 
-  console.log('[bullmq-worker] listening on queue "generate"')
+    console.log('[bullmq-worker] listening on queue "generate"')
+  })()
 }

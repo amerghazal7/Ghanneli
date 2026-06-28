@@ -85,15 +85,20 @@ export async function emit(
  * This factory is NOT called in tests; inject a fakePublisher() there instead.
  */
 export function getPublisher(): EventPublisher {
-  // Dynamic import keeps @google-cloud/pubsub out of the test-time module graph.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PubSub } = require('@google-cloud/pubsub') as typeof import('@google-cloud/pubsub')
   const projectId = process.env.PUBSUB_PROJECT
   const topicName = process.env.PUBSUB_TOPIC ?? 'ghanneli-analytics'
-  const pubsub = new PubSub({ projectId })
-  const topic = pubsub.topic(topicName)
+  // Lazily create the topic on first publish via an ESM dynamic import — the
+  // package is "type":"module", so a top-level require() is undefined at
+  // runtime. Tests inject a fakePublisher() and never reach this.
+  let topicPromise: Promise<{ publish(data: Buffer): Promise<string> }> | undefined
   return {
-    publish(data: Buffer | string): Promise<string> {
+    async publish(data: Buffer | string): Promise<string> {
+      if (!topicPromise) {
+        topicPromise = import('@google-cloud/pubsub').then(
+          ({ PubSub }) => new PubSub({ projectId }).topic(topicName),
+        )
+      }
+      const topic = await topicPromise
       const buf = typeof data === 'string' ? Buffer.from(data, 'utf8') : data
       return topic.publish(buf)
     },

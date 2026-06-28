@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { SharePageContent } from '../../src/app/song/[slug]/page'
+import { SharePageContent } from '../../src/app/song/[slug]/share-content'
 
 describe('SharePageContent', () => {
   it('renders preview player and CTA for a ready song', () => {

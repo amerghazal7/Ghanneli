@@ -25,8 +25,8 @@ import {
 } from '../../src/server/services/analytics/wiring'
 import { assertNoPii } from '../../src/server/services/analytics/emit'
 import { runGeneration } from '../../src/server/services/pipeline'
-import { rateSong, NotFoundError } from '../../src/app/api/songs/[id]/rate/route'
-import { createSong } from '../../src/app/api/songs/route'
+import { rateSong, NotFoundError } from '../../src/app/api/songs/[id]/rate/rate'
+import { createSong } from '../../src/app/api/songs/create'
 
 import type { LyricsService, LyricsResult } from '../../src/server/services/lyrics/types'
 import type { MusicGenerationService, MusicResult } from '../../src/server/services/music/types'

@@ -7,7 +7,7 @@ import * as schema from '../../src/server/db/schema'
 import { users, songs } from '../../src/server/db/schema'
 import type { Db } from '../../src/server/db/client'
 import { getBalance, credit } from '../../src/server/services/credits/ledger'
-import { unlockSong, SongNotReadyError } from '../../src/app/api/songs/[id]/unlock/route'
+import { unlockSong, SongNotReadyError } from '../../src/app/api/songs/[id]/unlock/unlock'
 import { InsufficientCreditsError } from '../../src/server/services/credits/ledger'
 
 type TestDb = ReturnType<typeof drizzle<typeof schema>>

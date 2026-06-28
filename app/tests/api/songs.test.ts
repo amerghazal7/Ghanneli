@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 import * as schema from '../../src/server/db/schema'
 import { users, songs } from '../../src/server/db/schema'
 import type { Db } from '../../src/server/db/client'
-import { createSong, bodySchema } from '../../src/app/api/songs/route'
+import { createSong, bodySchema } from '../../src/app/api/songs/create'
 
 type TestDb = ReturnType<typeof drizzle<typeof schema>>
 

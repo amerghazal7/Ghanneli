@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Aref_Ruqaa, Reem_Kufi, Tajawal } from 'next/font/google'
 import { AuthProvider } from '../lib/auth/AuthProvider'
+import { Header } from '../components/Header'
 import './globals.css'
 
 const arefRuqaa = Aref_Ruqaa({
@@ -37,7 +38,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${arefRuqaa.variable} ${reemKufi.variable} ${tajawal.variable}`}
     >
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <Header />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )

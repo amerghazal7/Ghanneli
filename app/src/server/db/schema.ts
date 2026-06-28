@@ -82,6 +82,7 @@ export const songs = pgTable(
     engineId: text('engine_id'),
     engineVersion: text('engine_version'),
     lyricsModel: text('lyrics_model'),
+    rating: integer('rating'),
     inputs: jsonb('inputs').$type<SongInputs>().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },

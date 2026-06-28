@@ -15,6 +15,13 @@
       "when": 1782654316387,
       "tag": "0001_melted_professor_monster",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782700000000,
+      "tag": "0002_add_song_rating",
+      "breakpoints": true
     }
   ]
 }

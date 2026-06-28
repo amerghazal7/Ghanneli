@@ -1,5 +1,10 @@
 variable "project_id" { type = string }
 
+variable "project_number" {
+  type        = string
+  description = "GCP project number (digits only). Used to construct the Pub/Sub service-agent email for the BQ subscription IAM binding. Obtain with: gcloud projects describe PROJECT_ID --format='value(projectNumber)'"
+}
+
 variable "region" {
   type    = string
   default = "europe-west1"

@@ -54,6 +54,8 @@ services:
 
   redis:
     image: redis:7-alpine
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -128,11 +130,10 @@ services:
 
   firebase-emulator:
     image: andreysenov/firebase-tools:latest
-    command: >
-      firebase emulators:start
-        --only auth
-        --project demo-ghanneli
-        --host 0.0.0.0
+    working_dir: /home/node
+    volumes:
+      - ./firebase.json:/home/node/firebase.json:ro
+    command: firebase emulators:start --only auth --project demo-ghanneli
     ports:
       - "9099:9099"
       - "4000:4000"

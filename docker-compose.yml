@@ -1,0 +1,193 @@
+# =============================================================================
+# Ghanneli — local dev stack
+#
+# Runs the WHOLE system locally for validation before deploy.
+# Posture: REAL dev/test services (Anthropic API, Firebase Auth emulator,
+#          Stripe test-mode) + LOCAL infra (Postgres, MinIO, Redis).
+#          FAKE GPU music engine (no GPU required).
+#
+# Quick start:
+#   cp .env.local.example .env.local   # fill ANTHROPIC_API_KEY + Stripe keys
+#   docker compose up --build
+#
+# Services:
+#   postgres       — PostgreSQL 16 (local DB)
+#   neon-proxy     — local Neon HTTP proxy (lets the app use neon-http driver locally)
+#   redis          — Redis 7 (BullMQ queue)
+#   minio          — S3-compatible object store (replaces Cloudflare R2)
+#   minio-setup    — one-shot bucket creation + public policy
+#   fake-engine    — fake music engine (canned WAV, no GPU)
+#   firebase-emulator — Firebase Auth emulator (replaces Firebase prod auth)
+#   web            — Next.js app (port 3000)
+#   worker         — BullMQ worker (pnpm worker)
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ghanneli
+      POSTGRES_USER: ghanneli
+      POSTGRES_PASSWORD: ghanneli
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ghanneli -d ghanneli"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  neon-proxy:
+    image: ghcr.io/timowilhelm/local-neon-http-proxy:latest
+    environment:
+      PG_CONNECTION_STRING: postgres://ghanneli:ghanneli@postgres:5432/ghanneli
+    ports:
+      - "4444:4444"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/ready || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio-setup:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 minioadmin minioadmin &&
+        mc mb --ignore-existing local/ghanneli-local &&
+        mc anonymous set download local/ghanneli-local &&
+        echo 'MinIO bucket ready.'
+      "
+
+  # ---------------------------------------------------------------------------
+  # Fake GPU music engine (LOCAL.4 fake — no GPU)
+  # Internal port 9000; NOT mapped to host 9000 (taken by MinIO).
+  # Reach internally as http://fake-engine:9000.
+  # For debug access map an unused host port e.g. 9002:9000.
+  # ---------------------------------------------------------------------------
+
+  fake-engine:
+    build:
+      context: ai-backend
+      dockerfile: Dockerfile.fake
+    environment:
+      AIBACKEND_TOKEN: devtoken
+      FAKE_ENGINE_PUBLIC_URL: http://fake-engine:9000
+    # Note: host port 9000 is taken by MinIO — expose a different port for debug.
+    ports:
+      - "9002:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/healthz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # Firebase Auth emulator
+  # Uses the google/cloud-sdk image which ships the firebase CLI.
+  # Exposes port 9099 (auth) and 4000 (emulator UI).
+  #
+  # Alternative if this image is too heavy: run the emulator on the HOST
+  # and set FIREBASE_AUTH_EMULATOR_HOST=host.docker.internal:9099 in .env.local
+  # (and remove this service + its depends_on entries from web/worker).
+  # ---------------------------------------------------------------------------
+
+  firebase-emulator:
+    image: andreysenov/firebase-tools:latest
+    command: >
+      firebase emulators:start
+        --only auth
+        --project demo-ghanneli
+        --host 0.0.0.0
+    ports:
+      - "9099:9099"
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9099/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Application services
+  # ---------------------------------------------------------------------------
+
+  web:
+    build:
+      context: .
+      dockerfile: app/Dockerfile.web
+    env_file: .env.local
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neon-proxy:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      fake-engine:
+        condition: service_healthy
+      firebase-emulator:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: app/Dockerfile.worker
+    env_file: .env.local
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      fake-engine:
+        condition: service_healthy
+
+# =============================================================================
+# Volumes
+# =============================================================================
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

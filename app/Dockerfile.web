@@ -1,0 +1,53 @@
+# =============================================================================
+# Ghanneli — web (Next.js) image
+#
+# Build context: repo root (docker-compose builds with context: .)
+# so the full pnpm workspace is available.
+#
+# Multi-stage:
+#   deps   — install workspace dependencies
+#   build  — build the Next.js app
+#   runner — minimal production image
+# =============================================================================
+
+# ---- deps stage ----
+FROM node:20-alpine AS deps
+
+WORKDIR /workspace
+
+# Enable corepack so pnpm is available inside the image
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy workspace manifests first for layer caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY app/package.json ./app/
+
+RUN pnpm install --frozen-lockfile
+
+# ---- build stage ----
+FROM deps AS build
+
+# Copy full source (workspace root + app)
+COPY . .
+
+# Build Next.js
+RUN pnpm -C app build
+
+# ---- runner stage ----
+FROM node:20-alpine AS runner
+
+WORKDIR /workspace
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy installed node_modules + built output from previous stages
+COPY --from=build /workspace/node_modules ./node_modules
+COPY --from=build /workspace/app ./app
+COPY --from=build /workspace/package.json ./
+COPY --from=build /workspace/pnpm-workspace.yaml ./
+
+ENV NODE_ENV=production
+
+EXPOSE 3000
+
+CMD ["pnpm", "-C", "app", "start"]

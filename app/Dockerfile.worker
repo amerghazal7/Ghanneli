@@ -1,0 +1,44 @@
+# =============================================================================
+# Ghanneli — worker image (BullMQ, ffmpeg, watermark)
+#
+# Build context: repo root (docker-compose builds with context: .)
+# Installs ffmpeg (required by postProcess) and embeds the watermark mp3.
+# =============================================================================
+
+FROM node:20-alpine AS deps
+
+WORKDIR /workspace
+
+# ffmpeg is required by the postProcess audio pipeline
+RUN apk add --no-cache ffmpeg
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY app/package.json ./app/
+
+RUN pnpm install --frozen-lockfile
+
+# ---- runner stage ----
+FROM node:20-alpine AS runner
+
+WORKDIR /workspace
+
+RUN apk add --no-cache ffmpeg
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY --from=deps /workspace/node_modules ./node_modules
+COPY --from=deps /workspace/app/node_modules ./app/node_modules
+
+# Copy full app source
+COPY . .
+
+# The watermark asset must exist at the path declared by WATERMARK_ASSET_PATH.
+# A placeholder silent mp3 is committed at app/assets/watermark.mp3.
+# WATERMARK_ASSET_PATH in .env.local points to this path inside the container.
+ENV WATERMARK_ASSET_PATH=/workspace/app/assets/watermark.mp3
+
+ENV NODE_ENV=production
+
+CMD ["pnpm", "-C", "app", "worker"]

@@ -38,8 +38,9 @@ export function Waveform({
   const [tick, setTick] = useState(0)
 
   // Detect reduced motion once, client-side
+  // Guard against jsdom which lacks matchMedia
   const prefersReducedMotion =
-    typeof window !== 'undefined'
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
       : false
 

@@ -1,11 +1,11 @@
-import Link from 'next/link'
 import { eq } from 'drizzle-orm'
-import { Player } from '../../../components/player'
+import { SongPage } from '../../../components/SongPage'
 import type { Db } from '../../../server/db/client'
 import { songs } from '../../../server/db/schema'
 
 // ---------------------------------------------------------------------------
-// Presentational component — exported so tests can render it directly
+// Presentational component — exported so tests can render it directly.
+// Props kept identical to original for test compatibility.
 // ---------------------------------------------------------------------------
 
 interface SharePageContentProps {
@@ -16,40 +16,22 @@ interface SharePageContentProps {
   unlocked?: boolean
 }
 
-export function SharePageContent({ status, previewUri, fullUri, songId, unlocked }: SharePageContentProps) {
-  if (status === 'ready' && previewUri) {
-    return (
-      <main>
-        {unlocked && fullUri ? (
-          <Player src={fullUri} />
-        ) : (
-          <>
-            <Player src={previewUri} />
-            {songId && (
-              <form method="POST" action={`/api/songs/${songId}/unlock`}>
-                <button type="submit">فتح</button>
-              </form>
-            )}
-          </>
-        )}
-        <Link href="/create">اصنع أغنيتك</Link>
-      </main>
-    )
-  }
-
-  if (status === 'failed') {
-    return (
-      <main>
-        <p>حدث خطأ أثناء إنشاء الأغنية.</p>
-        <Link href="/create">اصنع أغنيتك</Link>
-      </main>
-    )
-  }
-
-  // pending / lyrics / generating / postprocess
+export function SharePageContent({
+  status,
+  previewUri,
+  fullUri,
+  songId,
+  unlocked,
+}: SharePageContentProps) {
   return (
     <main>
-      <p>جاري إنشاء أغنيتك…</p>
+      <SongPage
+        songId={songId}
+        initialStatus={status}
+        previewUri={previewUri}
+        fullUri={fullUri}
+        unlocked={unlocked}
+      />
     </main>
   )
 }

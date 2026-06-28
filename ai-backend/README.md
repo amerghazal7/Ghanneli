@@ -40,3 +40,23 @@ curl -sS -o /dev/null -w "%{http_code}\n" \
 
 Expected: `200`. A `401` means the token is missing/wrong; a `5xx` means the
 engine failed to load (check `docker logs ghanneli-aibackend`).
+
+## Cloud production (Modal)
+
+`modal_app.py` packages the **same** `app.serving` code as a GPU web endpoint so
+cloud production and the L40S lab serve identical logic. Deploy:
+
+```bash
+modal deploy ai-backend/modal_app.py
+```
+
+This prints an HTTPS endpoint. Store it + the bearer token as Secret Manager
+versions (`cloud-engine-url`, `cloud-engine-token` from
+`infra/terraform/cloud_engine.tf`); Cloud Run injects them as `CLOUD_ENGINE_URL`
+/ `CLOUD_ENGINE_TOKEN`, which the App's `AceStepCloudProd` adapter uses.
+
+**Promotion / release:** validate a checkpoint on the L40S, bump
+`ACTIVE_ENGINE_VERSION`, then `modal deploy` to release. Roll back by redeploying
+the previous version. The App stamps `ACTIVE_ENGINE_VERSION` onto every song for
+provenance (`getActiveEngineVersion()`).
+

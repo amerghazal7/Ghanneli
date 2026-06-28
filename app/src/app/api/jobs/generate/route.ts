@@ -17,18 +17,35 @@ import { createMusicService } from '../../../../server/services/music/router'
 import { loadMusicConfigFromEnv } from '../../../../server/services/music/config'
 import { handleGenerationJob } from '../../../../server/jobs/worker'
 import type { StoreDep } from '../../../../server/services/pipeline'
-import type { MusicTake } from '../../../../server/services/music/types'
+import { postProcess } from '../../../../server/services/audio/postprocess'
+// StoreDep is satisfied by the prodStore closure below
+import { createProdR2Client } from '../../../../server/services/storage/r2'
+import { exec } from 'node:child_process'
+import { promisify } from 'node:util'
 import { anthropic } from '@ai-sdk/anthropic'
 
 const authClient = new OAuth2Client()
+const execAsync = promisify(exec)
 
-// ---------------------------------------------------------------------------
-// TODO(3.5): Replace this stub with the real GCS/CDN post-processing impl.
-// ---------------------------------------------------------------------------
-const storeStub: StoreDep = {
-  async postProcess(_take: MusicTake) {
-    throw new Error('StoreDep.postProcess not implemented — Task 3.5 pending')
-  },
+// Production ffmpeg runner — shells out to the system ffmpeg binary.
+async function runFfmpeg(args: string[]): Promise<void> {
+  const escaped = args.map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ')
+  await execAsync(`ffmpeg ${escaped}`)
+}
+
+// Production StoreDep: closes over real ffmpeg runner + R2 client from env vars.
+const prodStore: StoreDep = {
+  postProcess: (take) =>
+    postProcess(take, {
+      runFfmpeg,
+      r2: createProdR2Client(),
+      config: {
+        watermarkPath: process.env['WATERMARK_ASSET_PATH'] ?? '/assets/watermark.mp3',
+        previewLengthSec: 30,
+        bucket: process.env['R2_BUCKET'] ?? '',
+        publicBaseUrl: process.env['R2_PUBLIC_BASE_URL'] ?? '',
+      },
+    }),
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -73,7 +90,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // runGeneration sets status='failed' and re-throws on pipeline errors. Surface
   // a clean 5xx (no stack) so Cloud Tasks retries without leaking internals.
   try {
-    await handleGenerationJob(songId, { lyrics, music, store: storeStub, db })
+    await handleGenerationJob(songId, { lyrics, music, store: prodStore, db })
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }

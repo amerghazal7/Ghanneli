@@ -14,6 +14,19 @@ export class InsufficientCreditsError extends Error {
 }
 
 // ---------------------------------------------------------------------------
+// Raw-result normaliser. db.execute() returns a driver-specific shape:
+// pglite yields a top-level array, neon-http yields { rows: [...] }. Centralise
+// the extraction so the "applied vs not-applied" decision can't silently flip
+// if the driver's envelope changes. NOTE: re-verify this against neon-http if
+// the @neondatabase/serverless or drizzle-orm version is bumped.
+// ---------------------------------------------------------------------------
+function extractRows(result: unknown): unknown[] {
+  if (Array.isArray(result)) return result
+  const r = result as { rows?: unknown[] }
+  return Array.isArray(r.rows) ? r.rows : []
+}
+
+// ---------------------------------------------------------------------------
 // Core ledger functions (db parameter defaults to prod getDb() so production
 // callers can omit it; tests inject a pglite db).
 // ---------------------------------------------------------------------------
@@ -91,18 +104,21 @@ export async function debit(
     RETURNING id
   `)
 
-  // rows is the raw result — check if any row was returned
-  const returned = Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows ?? []
-  if (returned.length > 0) {
+  // rows is the raw driver result — check if any row was returned
+  if (extractRows(rows).length > 0) {
     // Debit was applied successfully
     return
   }
 
-  // No row returned — disambiguate: idempotent replay vs. insufficient balance
+  // No row returned — disambiguate: idempotent replay vs. insufficient balance.
+  // Scope the lookup to THIS user so a different user's row sharing the same
+  // (reason, refId) can never be mistaken for our own already-applied debit.
   const existingWithRef = await db
     .select({ id: creditLedger.id })
     .from(creditLedger)
-    .where(sql`${creditLedger.reason} = ${reason} AND ${creditLedger.refId} = ${refId}`)
+    .where(
+      sql`${creditLedger.reason} = ${reason} AND ${creditLedger.refId} = ${refId} AND ${creditLedger.userId} = ${userId}`,
+    )
     .limit(1)
 
   if (existingWithRef.length > 0) {

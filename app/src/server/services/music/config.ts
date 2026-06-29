@@ -7,9 +7,10 @@
 import { AceStepCloudProd } from './adapters/cloudProd'
 import { SelfHostStagingAdapter } from './adapters/selfHostStaging'
 import { AceStepLocalAdapter } from './adapters/aceStepLocal'
+import { LyriaAdapter } from './adapters/lyria'
 import type { MusicGenerationService } from './types'
 
-export type MusicMode = 'cloud-prod' | 'self-host-staging' | 'a-b-compare' | 'fallback' | 'acestep-local'
+export type MusicMode = 'cloud-prod' | 'self-host-staging' | 'a-b-compare' | 'fallback' | 'acestep-local' | 'lyria'
 
 export interface MusicRouterConfig {
   mode: MusicMode
@@ -18,7 +19,7 @@ export interface MusicRouterConfig {
   secondary: MusicGenerationService
 }
 
-const VALID_MODES = new Set<string>(['cloud-prod', 'self-host-staging', 'a-b-compare', 'fallback', 'acestep-local'])
+const VALID_MODES = new Set<string>(['cloud-prod', 'self-host-staging', 'a-b-compare', 'fallback', 'acestep-local', 'lyria'])
 
 function requireEnv(env: NodeJS.ProcessEnv, key: string): string {
   const val = env[key]
@@ -59,6 +60,14 @@ export function loadMusicConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Mu
         guidanceScale: env['ACESTEP_GUIDANCE'] ? Number(env['ACESTEP_GUIDANCE']) : undefined,
       })
       return { mode, primary: aceStepLocal, secondary: aceStepLocal }
+    }
+
+    case 'lyria': {
+      const lyria = new LyriaAdapter({
+        apiKey: requireEnv(env, 'GEMINI_API_KEY'),
+        model: env['LYRIA_MODEL'],
+      })
+      return { mode, primary: lyria, secondary: lyria }
     }
 
     case 'fallback':

@@ -26,6 +26,9 @@ export function createMusicService(config: MusicRouterConfig): MusicGenerationSe
         case 'acestep-local':
           return config.primary.generate(req)
 
+        case 'lyria':
+          return config.primary.generate(req)
+
         case 'fallback': {
           try {
             return await config.primary.generate(req)

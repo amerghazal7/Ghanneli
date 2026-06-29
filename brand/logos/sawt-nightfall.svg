@@ -1,0 +1,12 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ghanneli — Sawt Nightfall">
+  <!-- A song (equalizer) cradled by a crescent at nightfall, with a star. Fuses song + the Arab evening + the gift. -->
+  <g fill="currentColor">
+    <rect x="30" y="44" width="5" height="18" rx="2.5"/>
+    <rect x="39" y="32" width="5" height="30" rx="2.5"/>
+    <rect x="48" y="38" width="5" height="24" rx="2.5"/>
+    <rect x="57" y="28" width="5" height="34" rx="2.5"/>
+    <rect x="66" y="42" width="5" height="20" rx="2.5"/>
+  </g>
+  <path d="M24 66 Q50 85 76 66" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="75" cy="26" r="3.6" fill="currentColor"/>
+</svg>

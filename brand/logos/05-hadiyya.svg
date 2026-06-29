@@ -1,0 +1,12 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ghanneli — Hadiyya, the gift of song">
+  <!-- Hadiyya: a song lifting as a gift from cupped hands (the crescent bowl) -->
+  <path d="M20 54 Q50 84 80 54" fill="none" stroke="currentColor"
+        stroke-width="7" stroke-linecap="round"/>
+  <g fill="currentColor">
+    <circle cx="30" cy="46" r="3"/>
+    <circle cx="40" cy="39" r="3.2"/>
+    <circle cx="50" cy="34" r="3.6"/>
+    <circle cx="60" cy="39" r="3.2"/>
+    <circle cx="70" cy="46" r="3"/>
+  </g>
+</svg>

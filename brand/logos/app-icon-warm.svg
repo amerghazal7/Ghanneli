@@ -1,0 +1,26 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ghanneli app icon — a song from the heart">
+  <!-- Ghanneli warm app icon: SongOven-style warmth.
+       Cream rounded-square ground, a rose heart with the voice (equalizer) sung from within it, gold star accent. -->
+  <defs>
+    <linearGradient id="ground" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="1024">
+      <stop offset="0" stop-color="#FBF6EC"/>
+      <stop offset="1" stop-color="#F4EFE6"/>
+    </linearGradient>
+    <linearGradient id="heart" gradientUnits="userSpaceOnUse" x1="232" y1="333" x2="792" y2="760">
+      <stop offset="0" stop-color="#EC7C93"/>
+      <stop offset="1" stop-color="#E0607D"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="url(#ground)"/>
+  <path d="M512 760 C 232 565 274 333 432 333 C 482 333 512 372 512 405 C 512 372 542 333 592 333 C 750 333 792 565 512 760 Z"
+        fill="url(#heart)"/>
+  <!-- the voice (equalizer), knocked out by painting the bars in the ground gradient over the heart -->
+  <g fill="url(#ground)">
+    <rect x="408" y="470" width="34" height="116" rx="17"/>
+    <rect x="467" y="418" width="34" height="220" rx="17"/>
+    <rect x="526" y="452" width="34" height="152" rx="17"/>
+    <rect x="585" y="400" width="34" height="256" rx="17"/>
+    <rect x="644" y="482" width="34" height="100" rx="17"/>
+  </g>
+  <circle cx="690" cy="300" r="30" fill="#E8B046"/>
+</svg>

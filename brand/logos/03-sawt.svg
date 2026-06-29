@@ -1,0 +1,14 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ghanneli — Sawt equalizer">
+  <!-- The voice/song: an equalizer held inside a ring -->
+  <defs>
+    <clipPath id="ring"><circle cx="50" cy="50" r="30"/></clipPath>
+  </defs>
+  <g clip-path="url(#ring)" fill="currentColor">
+    <rect x="24" y="42" width="6" height="16" rx="3"/>
+    <rect x="36" y="31" width="6" height="38" rx="3"/>
+    <rect x="48" y="37" width="6" height="26" rx="3"/>
+    <rect x="60" y="26" width="6" height="48" rx="3"/>
+    <rect x="72" y="41" width="6" height="18" rx="3"/>
+  </g>
+  <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" stroke-width="3"/>
+</svg>

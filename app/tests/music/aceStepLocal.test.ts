@@ -65,7 +65,7 @@ describe('AceStepLocalAdapter', () => {
       expect(sent.modalities).toEqual(['audio'])
       expect(sent.lyrics).toBe(REQ.taggedLyrics)
       expect(sent.audio_config.duration).toBe(REQ.durationSec)
-      expect(sent.audio_config.format).toBe('mp3')
+      expect(sent.audio_config.format).toBe('wav')
       expect(sent.audio_config.instrumental).toBe(false)
       expect(sent.audio_config.vocal_language).toBe('arabic')
       // caption in messages[0].content must include genre and dialect

@@ -18,13 +18,21 @@ export class AceStepLocalAdapter implements MusicGenerationService {
   private readonly fetchImpl: typeof fetch
   private readonly writeFile: (path: string, data: Buffer) => Promise<void>
 
+  private readonly steps: number
+  private readonly guidanceScale: number
+
   constructor(
-    config: { baseUrl: string; token?: string; model?: string },
+    config: { baseUrl: string; token?: string; model?: string; steps?: number; guidanceScale?: number },
     deps: AceStepDeps = {},
   ) {
     this.baseUrl = config.baseUrl
     this.token = config.token
     this.model = config.model
+    // Higher inference steps → clearer vocals (the turbo model's floor of ~8
+    // produces mumbled, non-native-sounding output). guidance_scale tightens
+    // adherence to the lyrics/prompt. Both tunable via env (see config.ts).
+    this.steps = config.steps ?? 50
+    this.guidanceScale = config.guidanceScale ?? 7.5
     this.fetchImpl = deps.fetchImpl ?? fetch
     this.writeFile = deps.writeFile ?? ((p, d) => fsWriteFile(p, d))
   }
@@ -48,13 +56,18 @@ export class AceStepLocalAdapter implements MusicGenerationService {
       lyrics: req.taggedLyrics,
       audio_config: {
         duration: req.durationSec,
-        format: 'mp3',
+        // WAV is exported via soundfile (no ffmpeg). MP3 export on the ACE-Step
+        // host requires ffmpeg on its PATH; when absent, the server silently
+        // returns audio:null. We request WAV and let the worker (which bundles
+        // ffmpeg) transcode downstream.
+        format: 'wav',
         instrumental: false,
         vocal_language: 'arabic',
       },
       task_type: 'text2music',
       stream: false,
-      inference_steps: 8,
+      inference_steps: this.steps,
+      guidance_scale: this.guidanceScale,
     }
     if (this.model) {
       body['model'] = this.model
@@ -99,12 +112,17 @@ export class AceStepLocalAdapter implements MusicGenerationService {
       throw new EngineError('ACE-Step response missing valid audio data URL')
     }
 
-    // Strip "data:audio/...;base64," prefix and decode
+    // Strip "data:audio/<subtype>;base64," prefix and decode
     const base64Part = audioUrl.slice(audioUrl.indexOf(',') + 1)
     const audioBytes = Buffer.from(base64Part, 'base64')
 
-    // Write to a temp .mp3 so ffmpeg (which can't read data: URLs) can open it
-    const tempPath = join(tmpdir(), `acestep-${randomUUID()}.mp3`)
+    // Derive the temp-file extension from the data-URL mime so the downstream
+    // ffmpeg step gets a correctly-named container (mpeg→mp3, wav→wav, etc.).
+    const mimeSubtype = audioUrl.slice('data:audio/'.length, audioUrl.indexOf(';'))
+    const ext = mimeSubtype === 'mpeg' ? 'mp3' : (mimeSubtype || 'wav')
+
+    // Write to a temp file so ffmpeg (which can't read data: URLs) can open it
+    const tempPath = join(tmpdir(), `acestep-${randomUUID()}.${ext}`)
     await this.writeFile(tempPath, audioBytes)
 
     const engineVersion = (p['model'] as string | undefined) ?? this.model ?? 'ace-step-1.5'

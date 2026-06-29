@@ -710,6 +710,101 @@ select:focus-visible {
   outline-offset: 3px;
 }
 
+/* ---- Wizard hint + section spacing ------------------------ */
+.wizard__hint {
+  color: var(--muted);
+  font-size: var(--text-small);
+  margin-block: var(--space-2) 0;
+}
+
+.wizard__traits-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* ---- Toggle switch --------------------------------------- */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--ivory);
+  font-size: var(--text-small);
+}
+
+.toggle__track {
+  position: relative;
+  inline-size: 44px;
+  block-size: 24px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  transition: background 0.2s ease, border-color 0.2s ease;
+  flex: none;
+}
+
+.toggle__thumb {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  inline-size: 18px;
+  block-size: 18px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.toggle--on .toggle__track {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.toggle--on .toggle__thumb {
+  background: var(--bg);
+  /* RTL: the "on" thumb slides toward the start (visually left) edge. */
+  transform: translateX(-20px);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---- ✨ Suggest button ------------------------------------ */
+.suggest-btn {
+  background: color-mix(in srgb, var(--rose) 16%, transparent);
+  border: 1px solid var(--rose);
+  color: var(--rose);
+  border-radius: 999px;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-small);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.suggest-btn:hover:not(:disabled) {
+  background: var(--rose);
+  color: var(--bg);
+}
+
+.suggest-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.suggest-btn:focus-visible {
+  outline: 2px solid var(--rose);
+  outline-offset: 3px;
+}
+
 /* ---- create page ------------------------------------------ */
 .create-page {
   min-block-size: 100dvh;

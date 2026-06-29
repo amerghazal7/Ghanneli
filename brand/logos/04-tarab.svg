@@ -1,0 +1,16 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ghanneli — Tarab burst">
+  <!-- Tarab: the emotional swell of Arabic music radiating from a still center -->
+  <g fill="currentColor">
+    <!-- inner ring: 6 dots -->
+    <circle cx="50" cy="36" r="2.8"/><circle cx="62.1" cy="43" r="2.8"/>
+    <circle cx="62.1" cy="57" r="2.8"/><circle cx="50" cy="64" r="2.8"/>
+    <circle cx="37.9" cy="57" r="2.8"/><circle cx="37.9" cy="43" r="2.8"/>
+    <!-- outer ring: 12 dots -->
+    <circle cx="50" cy="24" r="2.1"/><circle cx="63" cy="27.5" r="2.1"/>
+    <circle cx="72.5" cy="37" r="2.1"/><circle cx="76" cy="50" r="2.1"/>
+    <circle cx="72.5" cy="63" r="2.1"/><circle cx="63" cy="72.5" r="2.1"/>
+    <circle cx="50" cy="76" r="2.1"/><circle cx="37" cy="72.5" r="2.1"/>
+    <circle cx="27.5" cy="63" r="2.1"/><circle cx="24" cy="50" r="2.1"/>
+    <circle cx="27.5" cy="37" r="2.1"/><circle cx="37" cy="27.5" r="2.1"/>
+  </g>
+</svg>

@@ -87,6 +87,17 @@ export async function emit(
 export function getPublisher(): EventPublisher {
   const projectId = process.env.PUBSUB_PROJECT
   const topicName = process.env.PUBSUB_TOPIC ?? 'ghanneli-analytics'
+
+  // No project configured (local dev) → no-op publisher. Constructing the real
+  // @google-cloud/pubsub client without GCP credentials spawns background auth
+  // and metadata-server lookups that reject WITHOUT an attached handler — an
+  // unhandled rejection that crashes the worker process even though the
+  // publish() call's own promise is caught. Prod sets PUBSUB_PROJECT (see
+  // infra/terraform/analytics.tf), so this only disables analytics locally.
+  if (!projectId) {
+    return { publish: async () => '' }
+  }
+
   // Lazily create the topic on first publish via an ESM dynamic import — the
   // package is "type":"module", so a top-level require() is undefined at
   // runtime. Tests inject a fakePublisher() and never reach this.

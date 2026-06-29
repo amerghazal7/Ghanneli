@@ -11,6 +11,7 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core'
+import type { AgeBand, Gender, Tempo } from '../services/music/types'
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -55,9 +56,29 @@ export interface SongInputs {
   recipient: string
   sender: string
   relationship: string
-  details: string[]
+  /** The "vibe" / emotional atmosphere (الأجواء). */
   mood: string
   lengthHint: 'short' | 'standard'
+  // The fields below are required by the create API for new songs, but are
+  // optional on the stored shape so pre-redesign rows (and tests that seed
+  // legacy inputs) remain valid. The pipeline applies safe defaults when absent.
+  tempo?: Tempo
+  /** Whether the recipient's name should literally appear in the lyrics. */
+  includeName?: boolean
+  /** Whether the occasion should be named in the lyrics. */
+  mentionOccasion?: boolean
+  /** Personality-trait chips the user selected (used only to flavour lyrics). */
+  traits?: string[]
+  /** Optional free-text story / memory in the user's own words. */
+  story?: string
+  /** Recipient demographics — fine-tune voice & address; never quoted literally. */
+  recipientGender?: Gender
+  recipientAge?: AgeBand
+  /** Sender demographics — set the narrative perspective. */
+  senderGender?: Gender
+  senderAge?: AgeBand
+  /** @deprecated pre-redesign free-text details; superseded by traits + story. */
+  details?: string[]
 }
 
 export const songs = pgTable(

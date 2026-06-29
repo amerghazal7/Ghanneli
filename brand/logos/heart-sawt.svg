@@ -1,0 +1,17 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ghanneli — a song from the heart">
+  <!-- SongOven-style warmth: a heart with the voice (equalizer) sung from within it -->
+  <defs>
+    <mask id="hs">
+      <path d="M50 79 C 16 55 21 27 44 27 C 50 27 50 35 50 39 C 50 35 50 27 56 27 C 79 27 84 55 50 79 Z" fill="white"/>
+      <g fill="black">
+        <rect x="34" y="44" width="4" height="14" rx="2"/>
+        <rect x="41" y="38" width="4" height="26" rx="2"/>
+        <rect x="48" y="42" width="4" height="18" rx="2"/>
+        <rect x="55" y="36" width="4" height="30" rx="2"/>
+        <rect x="62" y="45" width="4" height="12" rx="2"/>
+      </g>
+    </mask>
+  </defs>
+  <path d="M50 79 C 16 55 21 27 44 27 C 50 27 50 35 50 39 C 50 35 50 27 56 27 C 79 27 84 55 50 79 Z"
+        fill="currentColor" mask="url(#hs)"/>
+</svg>

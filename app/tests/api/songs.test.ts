@@ -22,12 +22,15 @@ const validInput = {
   recipient: 'أحمد',
   sender: 'سارة',
   relationship: 'صديق',
-  details: ['يحب الموسيقى'],
   mood: 'سعيد',
   lengthHint: 'standard' as const,
+  tempo: 'medium' as const,
   dialect: 'egyptian' as const,
   genre: 'pop',
   voiceGender: 'female' as const,
+  includeName: true,
+  mentionOccasion: true,
+  traits: ['يحب الموسيقى'],
 }
 
 describe('create-song API', () => {
@@ -66,6 +69,8 @@ describe('create-song API', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].status).toBe('pending')
     expect(rows[0].inputs.recipient).toBe('أحمد')
-    expect(rows[0].inputs.details).toEqual(['يحب الموسيقى'])
+    expect(rows[0].inputs.traits).toEqual(['يحب الموسيقى'])
+    expect(rows[0].inputs.tempo).toBe('medium')
+    expect(rows[0].inputs.includeName).toBe(true)
   })
 })

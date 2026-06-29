@@ -3,6 +3,11 @@ import { z } from 'zod'
 const dialectEnum = z.enum(['khaleeji', 'egyptian', 'levantine', 'maghrebi', 'iraqi'])
 export type Dialect = z.infer<typeof dialectEnum>
 
+/** Shared personalization value types used across the wizard → lyrics pipeline. */
+export type Gender = 'male' | 'female'
+export type AgeBand = 'child' | 'youth' | 'adult' | 'senior'
+export type Tempo = 'slow' | 'medium' | 'fast'
+
 export const MusicRequestSchema = z.object({
   taggedLyrics: z.string().min(1),
   transliteration: z.string(),

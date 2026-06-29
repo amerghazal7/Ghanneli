@@ -1,0 +1,15 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ghanneli — a written line that lifts into song">
+  <!-- The mark: a calligraphic kashida (Arabic elongation stroke) that begins as a flat
+       written baseline and rises into a sung melodic crest. The dot above is the dot of
+       the غ (ghayn) of غنّيلي — the released note. Writing becomes song. currentColor. -->
+  <path fill="currentColor" d="
+    M16 54.5
+    L39 54.5
+    C50 54.5 52 33 63 32
+    C72 31.2 80 38 90 40.2
+    C81 41 74 41 63 41
+    C53 42 51 61.5 39 61.5
+    L16 61.5
+    C12.5 61.5 12.5 54.5 16 54.5 Z"/>
+  <circle cx="65" cy="19" r="4.6" fill="currentColor"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ghanneli — Ghayn monogram">
+  <!-- Abstracted Arabic letter غ (ghayn) — the brand initial: open bowl + signature dot -->
+  <path d="M62 38 A22 22 0 1 1 44 33" fill="none" stroke="currentColor"
+        stroke-width="8" stroke-linecap="round"/>
+  <circle cx="50" cy="20" r="5.4" fill="currentColor"/>
+</svg>

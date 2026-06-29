@@ -60,13 +60,19 @@ export async function postProcess(
   const fullTmp = join(tmpdir(), `ghanneli-full-${id}.mp3`)
   const previewTmp = join(tmpdir(), `ghanneli-preview-${id}.mp3`)
 
+  // The engine emits exactly `durationSec` of audio and stops hard, so the
+  // track can end mid-phrase. A short fade-in/out gives a clean, non-abrupt
+  // start and ending. Fade the last 3s of the full track (and the preview).
+  const fullFadeOutStart = Math.max(0, take.durationSec - 3)
+  const previewFadeOutStart = Math.max(0, config.previewLengthSec - 3)
+
   try {
     // ------------------------------------------------------------------
-    // 1. Full track — loudnorm + encode MP3, NO watermark
+    // 1. Full track — loudnorm + fade in/out + encode MP3, NO watermark
     // ------------------------------------------------------------------
     await runFfmpeg([
       '-i', take.audioUri,
-      '-af', 'loudnorm',
+      '-af', `loudnorm,afade=t=in:st=0:d=1,afade=t=out:st=${fullFadeOutStart}:d=3`,
       '-codec:a', 'libmp3lame',
       '-q:a', '2',
       '-y',
@@ -80,7 +86,7 @@ export async function postProcess(
       '-i', take.audioUri,
       '-i', config.watermarkPath,
       '-t', String(config.previewLengthSec),
-      '-filter_complex', 'amix=inputs=2:duration=first:dropout_transition=3,loudnorm',
+      '-filter_complex', `amix=inputs=2:duration=first:dropout_transition=3,loudnorm,afade=t=out:st=${previewFadeOutStart}:d=3`,
       '-codec:a', 'libmp3lame',
       '-q:a', '2',
       '-y',

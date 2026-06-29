@@ -112,8 +112,9 @@ services:
     # Note: host port 9000 is taken by MinIO — expose a different port for debug.
     ports:
       - "9002:9000"
+    # python:3.11-slim has no curl — probe with the bundled Python interpreter.
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9000/healthz || exit 1"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:9000/healthz').status==200 else 1)\" || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -137,8 +138,9 @@ services:
     ports:
       - "9099:9099"
       - "4000:4000"
+    # firebase-tools is a Node image with no curl — probe with Node's http.
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9099/ || exit 1"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:9099/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))\""]
       interval: 10s
       timeout: 5s
       retries: 15

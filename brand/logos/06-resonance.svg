@@ -1,0 +1,9 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ghanneli — Resonance">
+  <!-- A voice resonating outward into the night — concentric arcs from a still core -->
+  <g fill="none" stroke="currentColor" stroke-linecap="round">
+    <path d="M36 50 A14 14 0 1 1 50 64" stroke-width="4.5"/>
+    <path d="M28 50 A22 22 0 1 1 50 72" stroke-width="3.2"/>
+    <path d="M20 50 A30 30 0 1 1 50 80" stroke-width="2.2"/>
+  </g>
+  <circle cx="50" cy="50" r="6" fill="currentColor"/>
+</svg>

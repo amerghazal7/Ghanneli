@@ -52,9 +52,17 @@ export async function runGeneration(songId: string, deps: GenerationDeps): Promi
       recipient: song.inputs.recipient,
       sender: song.inputs.sender,
       relationship: song.inputs.relationship,
-      details: song.inputs.details,
       mood: song.inputs.mood,
       lengthHint: song.inputs.lengthHint,
+      tempo: song.inputs.tempo,
+      includeName: song.inputs.includeName,
+      mentionOccasion: song.inputs.mentionOccasion,
+      traits: song.inputs.traits,
+      story: song.inputs.story,
+      recipientGender: song.inputs.recipientGender,
+      recipientAge: song.inputs.recipientAge,
+      senderGender: song.inputs.senderGender,
+      senderAge: song.inputs.senderAge,
     }
 
     // 4. Generate lyrics
@@ -64,14 +72,17 @@ export async function runGeneration(songId: string, deps: GenerationDeps): Promi
     await db.update(songs).set({ status: 'generating' }).where(eq(songs.id, songId))
 
     // 6. Build MusicRequest
-    const durationSec = song.inputs.lengthHint === 'short' ? 60 : 120
+    const durationSec = song.inputs.lengthHint === 'short' ? 90 : 180
+    const bpmByTempo = { slow: 80, medium: 110, fast: 140 } as const
+    const tempo: 'slow' | 'medium' | 'fast' = song.inputs.tempo ?? 'medium'
     const musicReq: MusicRequest = {
       taggedLyrics: lyricsResult.taggedLyricsArabic,
       transliteration: lyricsResult.transliteration,
       dialect: song.dialect,
       genre: song.genre,
       voiceGender: song.voiceGender as 'male' | 'female',
-      styleTags: [song.genre, song.inputs.mood, song.dialect],
+      bpm: bpmByTempo[tempo],
+      styleTags: [song.genre, song.inputs.mood, tempo, song.dialect],
       durationSec,
       numTakes: 1,
     }

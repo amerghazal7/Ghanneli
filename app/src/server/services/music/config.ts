@@ -55,6 +55,8 @@ export function loadMusicConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Mu
         baseUrl: requireEnv(env, 'ACESTEP_URL'),
         token: env['ACESTEP_TOKEN'],
         model: env['ACESTEP_MODEL'],
+        steps: env['ACESTEP_STEPS'] ? Number(env['ACESTEP_STEPS']) : undefined,
+        guidanceScale: env['ACESTEP_GUIDANCE'] ? Number(env['ACESTEP_GUIDANCE']) : undefined,
       })
       return { mode, primary: aceStepLocal, secondary: aceStepLocal }
     }

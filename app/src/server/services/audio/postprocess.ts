@@ -60,10 +60,12 @@ export async function postProcess(
   const fullTmp = join(tmpdir(), `ghanneli-full-${id}.mp3`)
   const previewTmp = join(tmpdir(), `ghanneli-preview-${id}.mp3`)
 
-  // The engine emits exactly `durationSec` of audio and stops hard, so the
-  // track can end mid-phrase. A short fade-in/out gives a clean, non-abrupt
-  // start and ending. Fade the last 3s of the full track (and the preview).
-  const fullFadeOutStart = Math.max(0, take.durationSec - 3)
+  // Engines stop hard (and some, like Lyria, return a longer clip than the
+  // nominal duration we asked for), so a track can end mid-phrase. We add a
+  // short fade-in at the start and a fade-out at the ACTUAL end. The end fade
+  // uses the areverse trick (reverse → fade-in 3s → reverse) so it lands on the
+  // real end regardless of the file's true length — computing it from the
+  // requested duration would cut a longer clip off early.
   const previewFadeOutStart = Math.max(0, config.previewLengthSec - 3)
 
   try {
@@ -72,7 +74,7 @@ export async function postProcess(
     // ------------------------------------------------------------------
     await runFfmpeg([
       '-i', take.audioUri,
-      '-af', `loudnorm,afade=t=in:st=0:d=1,afade=t=out:st=${fullFadeOutStart}:d=3`,
+      '-af', 'loudnorm,afade=t=in:st=0:d=1,areverse,afade=t=in:st=0:d=3,areverse',
       '-codec:a', 'libmp3lame',
       '-q:a', '2',
       '-y',

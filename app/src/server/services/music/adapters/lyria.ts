@@ -64,41 +64,49 @@ export class LyriaAdapter implements MusicGenerationService {
       generationConfig: { responseModalities: ['AUDIO'] as const },
     }
 
-    let res: Response
-    try {
-      res = await this.fetchImpl(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-    } catch (cause) {
-      throw new EngineError(`Network error reaching Lyria at ${this.baseUrl}`, { cause })
+    // Lyria's generateContent is non-deterministic: with longer lyrics it
+    // sometimes returns only the text composition and no audio part. Retry a
+    // few times before giving up so the A/B alternate reliably materialises.
+    const MAX_ATTEMPTS = 3
+    let audioPart: { inlineData?: { mimeType?: string; data?: string } } | undefined
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS && !audioPart; attempt++) {
+      let res: Response
+      try {
+        res = await this.fetchImpl(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+      } catch (cause) {
+        throw new EngineError(`Network error reaching Lyria at ${this.baseUrl}`, { cause })
+      }
+
+      if (!res.ok) {
+        throw new EngineError(`Lyria returned HTTP ${res.status}`, { status: res.status })
+      }
+
+      let parsed: unknown
+      try {
+        parsed = await res.json()
+      } catch (cause) {
+        throw new EngineError('Lyria response is not valid JSON', { status: res.status, cause })
+      }
+
+      // Walk candidates[0].content.parts[] for the inline audio part.
+      const p = parsed as {
+        candidates?: Array<{
+          content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> }
+        }>
+      }
+      const parts = p.candidates?.[0]?.content?.parts ?? []
+      audioPart = parts.find(
+        (part) => part.inlineData?.mimeType?.startsWith('audio/') && part.inlineData.data,
+      )
     }
 
-    if (!res.ok) {
-      throw new EngineError(`Lyria returned HTTP ${res.status}`, { status: res.status })
-    }
-
-    let parsed: unknown
-    try {
-      parsed = await res.json()
-    } catch (cause) {
-      throw new EngineError('Lyria response is not valid JSON', { status: res.status, cause })
-    }
-
-    // Walk candidates[0].content.parts[] for the inline audio part.
-    const p = parsed as {
-      candidates?: Array<{
-        content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> }
-      }>
-    }
-    const parts = p.candidates?.[0]?.content?.parts ?? []
-    const audioPart = parts.find(
-      (part) => part.inlineData?.mimeType?.startsWith('audio/') && part.inlineData.data,
-    )
     const b64 = audioPart?.inlineData?.data
     if (!b64) {
-      throw new EngineError('Lyria response missing inline audio data')
+      throw new EngineError(`Lyria returned no audio after ${MAX_ATTEMPTS} attempts`)
     }
 
     const audioBytes = Buffer.from(b64, 'base64')

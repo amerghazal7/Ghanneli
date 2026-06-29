@@ -58,7 +58,10 @@ export function buildGenerationDeps(): GenerationDeps {
 
   return {
     lyrics: createLyricsService({
-      model: googleProvider(process.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash'),
+      // Lyrics are the one creative task worth the strongest model — use Gemini
+      // 3.1 Pro by default (far richer poetry/rhyme than Flash). Overridable via
+      // GEMINI_LYRICS_MODEL. Flash stays the default for cheaper tasks (suggest).
+      model: googleProvider(process.env['GEMINI_LYRICS_MODEL'] ?? 'gemini-3.1-pro-preview'),
       fallbackModel: anthropic(process.env['LYRICS_MODEL'] ?? 'claude-3-5-haiku-latest'),
     }),
     music: createMusicService(loadMusicConfigFromEnv()),

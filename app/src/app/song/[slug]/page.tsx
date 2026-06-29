@@ -16,6 +16,8 @@ export default async function SharePage({
       status={song.status}
       previewUri={song.previewUri ?? undefined}
       fullUri={song.fullUri ?? undefined}
+      altPreviewUri={song.altPreviewUri ?? undefined}
+      altFullUri={song.altFullUri ?? undefined}
       songId={song.id}
       unlocked={song.unlocked}
     />

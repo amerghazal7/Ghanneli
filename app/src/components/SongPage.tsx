@@ -10,12 +10,16 @@ import { Tag } from './ui/Tag'
 import { Button } from './ui/Button'
 import { authedFetch, ApiError } from '../lib/api/client'
 
+type Variant = 'primary' | 'alt'
+
 interface SongPageProps {
   songId?: string
   shareSlug?: string
   initialStatus: string
   previewUri?: string
   fullUri?: string
+  altPreviewUri?: string
+  altFullUri?: string
   unlocked?: boolean
 }
 
@@ -45,17 +49,29 @@ const STATUS_COPY: Record<string, string> = {
   postprocess: 'نُلمّع اللمسات الأخيرة…',
 }
 
+const VERSION_LABELS: Record<Variant, string> = {
+  primary: 'النسخة الأولى',
+  alt: 'النسخة الثانية',
+}
+
 export function SongPage({
   songId,
   shareSlug,
   initialStatus,
   previewUri: initialPreviewUri,
   fullUri: initialFullUri,
+  altPreviewUri: initialAltPreviewUri,
+  altFullUri: initialAltFullUri,
   unlocked: initialUnlocked,
 }: SongPageProps) {
   const [pageState, setPageState] = useState<PageState>(() =>
     resolveInitialState(initialStatus, initialPreviewUri, initialFullUri, initialUnlocked),
   )
+  // Alt-engine URIs (the A/B "second version"). Tracked separately from the
+  // primary state machine so both versions render in preview AND unlocked.
+  const [altPreviewUri, setAltPreviewUri] = useState<string | undefined>(initialAltPreviewUri)
+  const [altFullUri, setAltFullUri] = useState<string | undefined>(initialAltFullUri)
+  const [chosen, setChosen] = useState<Variant | null>(null)
   const [unlockError, setUnlockError] = useState<string | null>(null)
   const [unlockLoading, setUnlockLoading] = useState(false)
   const [rating, setRating] = useState<number | null>(null)
@@ -71,6 +87,7 @@ export function SongPage({
     songStatus.status === 'ready' &&
     songStatus.previewUri
   ) {
+    if (songStatus.altPreviewUri && !altPreviewUri) setAltPreviewUri(songStatus.altPreviewUri)
     setPageState({ kind: 'preview', previewUri: songStatus.previewUri })
   }
   if (pageState.kind === 'generating' && songStatus.status === 'failed') {
@@ -83,7 +100,8 @@ export function SongPage({
     setUnlockError(null)
     try {
       const res = await authedFetch(`/api/songs/${songId}/unlock`, { method: 'POST' })
-      const data = (await res.json()) as { fullUri: string }
+      const data = (await res.json()) as { fullUri: string; altFullUri?: string }
+      if (data.altFullUri) setAltFullUri(data.altFullUri)
       const prevUri =
         pageState.kind === 'preview' || pageState.kind === 'paywall'
           ? pageState.previewUri
@@ -108,6 +126,19 @@ export function SongPage({
     }
   }
 
+  async function handleChoose(variant: Variant) {
+    setChosen(variant) // optimistic
+    if (!songId) return
+    try {
+      await authedFetch(`/api/songs/${songId}/choose`, {
+        method: 'POST',
+        body: JSON.stringify({ variant }),
+      })
+    } catch {
+      // non-fatal — keep the optimistic selection
+    }
+  }
+
   async function handleRate(value: number) {
     if (!songId || ratingDone) return
     setRating(value)
@@ -126,6 +157,40 @@ export function SongPage({
     typeof window !== 'undefined' && shareSlug
       ? `${window.location.origin}/song/${shareSlug}`
       : null
+
+  // A labeled version block — player, optional download, and a "pick" control.
+  function VersionBlock({
+    variant,
+    src,
+    download,
+  }: {
+    variant: Variant
+    src: string
+    download: boolean
+  }) {
+    const isChosen = chosen === variant
+    return (
+      <div className={`version-block${isChosen ? ' version-block--chosen' : ''}`}>
+        <div className="version-block__head">
+          <span className="version-block__label">{VERSION_LABELS[variant]}</span>
+          {isChosen && <Tag color="gold">اختيارك</Tag>}
+        </div>
+        <AudioPlayer src={src} label={VERSION_LABELS[variant]} />
+        <div className="version-block__actions">
+          <button
+            type="button"
+            className={`btn btn--md ${isChosen ? 'btn--primary' : 'btn--ghost'}`}
+            onClick={() => { void handleChoose(variant) }}
+          >
+            {isChosen ? 'المختارة' : 'اختر هذه'}
+          </button>
+          {download && (
+            <a href={src} download className="btn btn--ghost btn--md">تحميل</a>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   // ---- Generating state ----
   if (pageState.kind === 'generating') {
@@ -166,7 +231,17 @@ export function SongPage({
         <div className="song-page__tags">
           <Tag color="rose">مقطع تجريبي ٣٠ ثانية</Tag>
         </div>
-        <AudioPlayer src={pageState.previewUri} label="معاينة الأغنية" />
+        {altPreviewUri ? (
+          <>
+            <p className="song-page__compare-hint">جرّبنا لك نسختين — استمع لكلٍّ منهما واختر المفضّلة.</p>
+            <div className="version-grid">
+              <VersionBlock variant="primary" src={pageState.previewUri} download={false} />
+              <VersionBlock variant="alt" src={altPreviewUri} download={false} />
+            </div>
+          </>
+        ) : (
+          <AudioPlayer src={pageState.previewUri} label="معاينة الأغنية" />
+        )}
         {unlockError && (
           <p className="song-page__error" role="alert">{unlockError}</p>
         )}
@@ -196,7 +271,14 @@ export function SongPage({
         <div className="song-page__tags">
           <Tag color="rose">مقطع تجريبي ٣٠ ثانية</Tag>
         </div>
-        <AudioPlayer src={pageState.previewUri} label="معاينة الأغنية" />
+        {altPreviewUri ? (
+          <div className="version-grid">
+            <VersionBlock variant="primary" src={pageState.previewUri} download={false} />
+            <VersionBlock variant="alt" src={altPreviewUri} download={false} />
+          </div>
+        ) : (
+          <AudioPlayer src={pageState.previewUri} label="معاينة الأغنية" />
+        )}
         <div className="song-page__paywall-box">
           <p className="song-page__paywall-intro">
             رصيدك غير كافٍ. اختر باقة لفتح الأغنية كاملة.
@@ -218,17 +300,27 @@ export function SongPage({
   // ---- Unlocked state ----
   return (
     <div className="song-page song-page--unlocked">
-      <AudioPlayer src={pageState.fullUri} label="الأغنية كاملة" />
+      {altFullUri ? (
+        <>
+          <p className="song-page__compare-hint">نسختان كاملتان — اختر المفضّلة وحمّلها.</p>
+          <div className="version-grid">
+            <VersionBlock variant="primary" src={pageState.fullUri} download />
+            <VersionBlock variant="alt" src={altFullUri} download />
+          </div>
+        </>
+      ) : (
+        <>
+          <AudioPlayer src={pageState.fullUri} label="الأغنية كاملة" />
+          <div className="song-page__actions">
+            <a href={pageState.fullUri} download className="btn btn--ghost btn--md">
+              تحميل الأغنية
+            </a>
+          </div>
+        </>
+      )}
 
-      <div className="song-page__actions">
-        <a
-          href={pageState.fullUri}
-          download
-          className="btn btn--ghost btn--md"
-        >
-          تحميل الأغنية
-        </a>
-        {shareUrl && (
+      {shareUrl && (
+        <div className="song-page__actions">
           <button
             className="btn btn--ghost btn--md"
             onClick={() => {
@@ -237,8 +329,8 @@ export function SongPage({
           >
             نسخ رابط المشاركة
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {!ratingDone && (
         <div className="song-page__rating">

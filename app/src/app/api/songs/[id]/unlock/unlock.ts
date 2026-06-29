@@ -30,19 +30,21 @@ export class SongNotReadyError extends Error {
  * - Throws NotFoundError when the song doesn't exist or doesn't belong to userId.
  * - Throws InsufficientCreditsError when the user has no credits (and the debit
  *   has not been applied before — idempotent re-unlock does NOT throw).
- * - Returns { fullUri } on success.
+ * - Returns { fullUri, altFullUri } on success (altFullUri present when an A/B
+ *   alternate version exists).
  */
 export async function unlockSong(
   songId: string,
   userId: string,
   db: Db = getDb(),
-): Promise<{ fullUri: string }> {
+): Promise<{ fullUri: string; altFullUri?: string }> {
   // 1. Load song — only rows owned by this user
   const rows = await db
     .select({
       id: songs.id,
       userId: songs.userId,
       fullUri: songs.fullUri,
+      altFullUri: songs.altFullUri,
       status: songs.status,
     })
     .from(songs)
@@ -71,5 +73,8 @@ export async function unlockSong(
     .set({ unlocked: true })
     .where(eq(songs.id, songId))
 
-  return { fullUri: song.fullUri ?? '' }
+  return {
+    fullUri: song.fullUri ?? '',
+    ...(song.altFullUri ? { altFullUri: song.altFullUri } : {}),
+  }
 }

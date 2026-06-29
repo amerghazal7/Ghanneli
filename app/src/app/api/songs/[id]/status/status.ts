@@ -5,6 +5,8 @@ import { songs } from '../../../../../server/db/schema'
 export interface SongStatusResult {
   status: string
   previewUri?: string
+  /** A/B alternate-engine preview (Lyria), present only when the song is ready. */
+  altPreviewUri?: string
 }
 
 /**
@@ -19,6 +21,7 @@ export async function getSongStatus(
     .select({
       status: songs.status,
       previewUri: songs.previewUri,
+      altPreviewUri: songs.altPreviewUri,
     })
     .from(songs)
     .where(eq(songs.id, songId))
@@ -29,6 +32,7 @@ export async function getSongStatus(
   const result: SongStatusResult = { status: row.status }
   if (row.status === 'ready' && row.previewUri) {
     result.previewUri = row.previewUri
+    if (row.altPreviewUri) result.altPreviewUri = row.altPreviewUri
   }
   return result
 }

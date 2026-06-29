@@ -7,6 +7,7 @@ const POLL_INTERVAL_MS = 3000
 export interface SongStatusState {
   status: string | null
   previewUri: string | null
+  altPreviewUri: string | null
   error: boolean
 }
 
@@ -14,6 +15,7 @@ export function useSongStatus(songId: string | null): SongStatusState {
   const [state, setState] = useState<SongStatusState>({
     status: null,
     previewUri: null,
+    altPreviewUri: null,
     error: false,
   })
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -33,10 +35,15 @@ export function useSongStatus(songId: string | null): SongStatusState {
           return
         }
 
-        const data = (await res.json()) as { status: string; previewUri?: string }
+        const data = (await res.json()) as { status: string; previewUri?: string; altPreviewUri?: string }
         if (cancelled) return
 
-        setState({ status: data.status, previewUri: data.previewUri ?? null, error: false })
+        setState({
+          status: data.status,
+          previewUri: data.previewUri ?? null,
+          altPreviewUri: data.altPreviewUri ?? null,
+          error: false,
+        })
 
         // Keep polling unless terminal
         if (data.status !== 'ready' && data.status !== 'failed') {

@@ -25,6 +25,13 @@ export interface StoreDep {
 export interface GenerationDeps {
   lyrics: LyricsService
   music: MusicGenerationService
+  /**
+   * Optional second engine for A/B comparison. When present, the same lyrics
+   * are rendered by both engines and stored as the song's alt version so the
+   * listener can compare and pick a favorite. A failure here never fails the
+   * song — the primary result still ships.
+   */
+  musicAlt?: MusicGenerationService
   store: StoreDep
   db: AnyDb
   events?: { emit(name: string, payload: unknown): void }
@@ -35,7 +42,7 @@ export interface GenerationDeps {
 // ---------------------------------------------------------------------------
 
 export async function runGeneration(songId: string, deps: GenerationDeps): Promise<void> {
-  const { lyrics, music, store, db, events } = deps
+  const { lyrics, music, musicAlt, store, db, events } = deps
 
   // 1. Load song from DB
   const [song] = await db.select().from(songs).where(eq(songs.id, songId))
@@ -95,10 +102,33 @@ export async function runGeneration(songId: string, deps: GenerationDeps): Promi
     // 8. Status → postprocess
     await db.update(songs).set({ status: 'postprocess' }).where(eq(songs.id, songId))
 
-    // 9. Post-process best take
+    // 9. Post-process the primary take
     const { fullUri, previewUri } = await store.postProcess(musicResult.takes[0])
 
-    // 10. Update song → ready with provenance
+    // 9b. Optional A/B: render the SAME lyrics with the alt engine. Best-effort
+    // — if it fails, the song still ships with just the primary version.
+    let alt: {
+      altPreviewUri: string
+      altFullUri: string
+      altEngineId: string
+      altEngineVersion: string
+    } | null = null
+    if (musicAlt) {
+      try {
+        const altResult = await musicAlt.generate(musicReq)
+        const altUris = await store.postProcess(altResult.takes[0])
+        alt = {
+          altPreviewUri: altUris.previewUri,
+          altFullUri: altUris.fullUri,
+          altEngineId: altResult.engineId,
+          altEngineVersion: altResult.engineVersion,
+        }
+      } catch (altErr) {
+        console.warn('[pipeline] alt engine failed; shipping primary only:', altErr)
+      }
+    }
+
+    // 10. Update song → ready with provenance (+ alt version when present)
     await db
       .update(songs)
       .set({
@@ -108,6 +138,7 @@ export async function runGeneration(songId: string, deps: GenerationDeps): Promi
         engineId: musicResult.engineId,
         engineVersion: musicResult.engineVersion,
         lyricsModel: lyricsResult.meta.model,
+        ...(alt ?? {}),
       })
       .where(eq(songs.id, songId))
 

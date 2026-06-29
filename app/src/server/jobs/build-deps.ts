@@ -15,6 +15,7 @@ import { getDb } from '../db/client'
 import { createLyricsService } from '../services/lyrics/service'
 import { createMusicService } from '../services/music/router'
 import { loadMusicConfigFromEnv } from '../services/music/config'
+import { LyriaAdapter } from '../services/music/adapters/lyria'
 import { postProcess } from '../services/audio/postprocess'
 import { createProdR2Client } from '../services/storage/r2'
 import { createAnalyticsEvents } from '../services/analytics/wiring'
@@ -65,6 +66,16 @@ export function buildGenerationDeps(): GenerationDeps {
       fallbackModel: anthropic(process.env['LYRICS_MODEL'] ?? 'claude-3-5-haiku-latest'),
     }),
     music: createMusicService(loadMusicConfigFromEnv()),
+    // A/B second engine (Lyria) — renders the same lyrics so the listener can
+    // compare and pick. On by default when a Gemini key is present; set
+    // AB_COMPARE=off to disable (saves the extra per-song Lyria call).
+    musicAlt:
+      process.env['AB_COMPARE'] !== 'off' && process.env['GEMINI_API_KEY']
+        ? new LyriaAdapter({
+            apiKey: process.env['GEMINI_API_KEY']!,
+            model: process.env['LYRIA_MODEL'],
+          })
+        : undefined,
     store: prodStore,
     events: createAnalyticsEvents(getPublisher()),
     db: getDb(),

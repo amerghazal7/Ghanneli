@@ -102,6 +102,14 @@ export const songs = pgTable(
     unlocked: boolean('unlocked').notNull().default(false),
     engineId: text('engine_id'),
     engineVersion: text('engine_version'),
+    // A/B second engine output (e.g. Lyria) for the same lyrics — lets the
+    // listener compare and pick a favorite. Null when only one engine ran.
+    altPreviewUri: text('alt_preview_uri'),
+    altFullUri: text('alt_full_uri'),
+    altEngineId: text('alt_engine_id'),
+    altEngineVersion: text('alt_engine_version'),
+    /** Which version the user picked: the primary or alt engineId. */
+    chosenEngine: text('chosen_engine'),
     lyricsModel: text('lyrics_model'),
     rating: integer('rating'),
     inputs: jsonb('inputs').$type<SongInputs>().notNull(),

@@ -65,36 +65,42 @@ export function buildPrompt(r: LyricsRequest): string {
     ? `Name or clearly evoke the occasion ("${r.occasion}") within the lyrics.`
     : `Let the occasion ("${r.occasion}") set the theme, but do NOT name it explicitly.`
 
-  return `You are a gifted Arabic lyricist. Write original gift-song lyrics in Arabic for a personal celebration.
+  return `أنت شاعر غنائي عربي بارع. You are a celebrated Arabic songwriter crafting a personal GIFT SONG.
+Write lyrics that read and sing like a REAL, professionally-written Arabic song — never a translation, never prose, never a greeting card.
 
-DIALECT & STYLE
+DIALECT & VOICE
 ${dialectDesc}
-Match ${tempoGuide[tempo]} and a "${r.mood}" emotional atmosphere.
+Write in authentic, colloquial ${r.dialect} as people actually SING it — warm and idiomatic. Avoid stiff MSA (فصحى), avoid literal/translated phrasing, and never mix dialects. Match ${tempoGuide[tempo]} and a "${r.mood}" feeling.
 
-SONG CONTEXT
+CRAFT — this is what separates a real song from filler:
+- قافية (rhyme): every section has a clear, consistent end-rhyme. Lines inside a verse rhyme together; the chorus carries its own strong rhyme.
+- لازمة (refrain): the chorus is the emotional hook — vivid and memorable — and it REPEATS verbatim each time it appears.
+- وزن (rhythm): keep lines close in length and syllable count so they sing smoothly; no crammed or limping lines.
+- بناء (arc): build emotion across the verses (e.g. a shared memory → what they mean to you → a heartfelt wish). Do not restate the same idea twice.
+- صور (imagery): use concrete, sensory, culturally-resonant images; cut tired clichés and filler. Every line must earn its place.
+- Show the person through moments and images — do NOT list adjectives.
+
+SONG BRIEF
 - Occasion: ${r.occasion}
-- Recipient: ${r.recipient}${recipientAbout ? ` (${recipientAbout})` : ''}
-- Written by: ${r.sender}${senderAbout ? ` (${senderAbout})` : ''}
-- Perspective: the sender is the recipient's ${r.relationship}; write in the sender's first-person voice.
-- Vibe / mood: ${r.mood}
-- Qualities that define the recipient:
+- For: ${r.recipient}${recipientAbout ? ` (${recipientAbout})` : ''}
+- From: ${r.sender}${senderAbout ? ` (${senderAbout})` : ''} — the ${r.relationship}; write in their first-person voice, singing TO ${r.recipient}.
+- Feeling: ${r.mood}
+- What defines them:
 ${traitsList}
-${r.story ? `- In the sender's own words: ${r.story}\n` : ''}
-PERSONALIZATION RULES
+${r.story ? `- A real memory to weave in: ${r.story}\n` : ''}
+PERSONALIZATION
 - ${nameRule}
 - ${occasionRule}
-- Use any demographic hints only to shape tone, forms of address, and imagery — never quote them literally.
+- Demographic hints only shape tone, forms of address, and imagery — never state them literally.
 
 STRUCTURE
-Write ${lengthInstruction}. Use these section tags exactly:
-[verse] — placed before each verse
-[chorus] — placed before each chorus
+Write ${lengthInstruction}. Tag every section: [verse] before each verse, [chorus] before each chorus.
+Repeat the SAME chorus text each time it recurs. Aim for ~4 balanced, rhyming lines per section.
+Put each section tag on its own line, and each lyric line on its OWN line (newline-separated) — never run lines together.
 
-OUTPUT RULES
-1. taggedLyricsArabic: the complete lyrics in Arabic script, with [verse] and [chorus] tags inline.
-2. transliteration: a romanised (Latin-script) phonetic transliteration of the same lyrics, preserving the section tags.
-3. language: always the string "ar".
-4. Do NOT include any explanatory text outside the JSON — return only the structured object.
-5. Do NOT reference any real singer, musician, or band by name anywhere in the lyrics or transliteration.
-6. Keep the lyrics personal, warm, and authentic to the dialect.`
+OUTPUT (return ONLY the JSON object):
+1. taggedLyricsArabic: the complete Arabic lyrics with [verse] and [chorus] tags inline.
+2. transliteration: a Latin-script phonetic transliteration of the same lyrics, preserving the tags.
+3. language: always "ar".
+Hard rules: no explanatory text outside the JSON; never name any real singer, musician, or band; keep it personal, singable, and true to the dialect.`
 }

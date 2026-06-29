@@ -23,6 +23,9 @@ export function createLyricsService(opts: {
           model: m,
           schema: LyricsOutputSchema,
           prompt,
+          // Lyrics are creative writing — a higher temperature yields more
+          // natural, less "templated" Arabic phrasing and rhyme.
+          temperature: 0.9,
         })
         return {
           taggedLyricsArabic: object.taggedLyricsArabic,

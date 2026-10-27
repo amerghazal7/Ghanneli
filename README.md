@@ -26,4 +26,4 @@ See `docs/local-dev.md`. The example environment files use placeholder values on
 
 ## Author
 
-Amer Ghazal, personal project, 2026. Licence to be added.
+Amer Ghazal, personal project, 2026. MIT licence.
